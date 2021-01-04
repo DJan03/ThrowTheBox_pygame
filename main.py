@@ -20,18 +20,20 @@ class GameObject(pygame.sprite.Sprite):
         self.velocity_y = 0
 
     def update(self):
+        # TODO: create new method for every section
         if self.apply_gravity:
             self.velocity_y += GRAVITY
         if self.lose_velocity:
             pass
 
-        self.rect.x += self.velocity_x
-        self.rect.y += self.velocity_y
+        self.rect = self.rect.move(self.velocity_x, self.velocity_y)
 
+        # TODO: need to change that. Add simple borders at bot
         if self.rect.y > HEIGHT - 50:
             self.rect.y = HEIGHT - 50
 
-    def add_velocity(self, x: int, y: int):
+
+    def set_velocity(self, x: int, y: int):
         self.velocity_x = x
         self.velocity_y = y
 
@@ -41,10 +43,31 @@ class Player(GameObject):
         super().__init__(group, True, True, image)
 
         self.speed = 10
-        self.keys = keys
+        self.keys = keys # TODO: need to rework
 
     def control(self, event):
-        pass
+        if event.type == pygame.KEYDOWN:
+            for key in self.keys:
+                if event.key == key:
+                    self.keys[key] = True
+                    break
+        if event.type == pygame.KEYUP:
+            for key in self.keys:
+                if event.key == key:
+                    self.keys[key] = False
+                    break
+
+    def move(self):
+        input = [self.keys[key] for key in self.keys]
+
+        if input[0] and input[1]:
+            self.velocity_x = 0
+        elif input[0]:
+            self.velocity_x = -10
+        elif input[1]:
+            self.velocity_x = 10
+        else:
+            self.velocity_x = 0
 
 
 def main():
@@ -56,7 +79,7 @@ def main():
 
     sprite_group = pygame.sprite.Group()
 
-    player = Player(sprite_group, square, {pygame.K_LEFT: False, pygame.K_RIGHT: False, pygame.K_SPACE: False})
+    player = Player(sprite_group, square, {pygame.K_LEFT: False, pygame.K_RIGHT: False, pygame.K_UP: False, pygame.K_SPACE: False})
 
     clock = pygame.time.Clock()
     RUN = True
@@ -71,7 +94,7 @@ def main():
 
         sprite_group.update()
         sprite_group.draw(screen)
-
+        player.move()
         pygame.display.flip()
         clock.tick(FPS)
 
