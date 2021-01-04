@@ -4,7 +4,7 @@ from typing import List, Dict
 
 WIDTH, HEIGHT = 800, 600
 FPS = 60
-GRAVITY = 10
+GRAVITY = 4
 
 
 class Block(pygame.sprite.Sprite):
@@ -20,7 +20,7 @@ class Block(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, group: pygame.sprite.Group, image: pygame.Surface, keys: Dict[int, bool]):
+    def __init__(self, group: pygame.sprite.Group, image: pygame.Surface, left, right, up, down, use):
         super().__init__(group)
 
         self.image = image
@@ -31,7 +31,20 @@ class Player(pygame.sprite.Sprite):
         self.velocity_x = 0
         self.velocity_y = 0
 
-        self.keys = keys
+        self.velocity_a = 1
+        self.velocity_max = 10
+
+        self.impulse_x = 0
+
+        self.LEFT = left
+        self.RIGHT = right
+        self.UP = up
+        self.DOWN = down
+        self.USE = use
+        self.keys = {}
+
+        for i in [self.LEFT, self.RIGHT, self.UP, self.DOWN, self.USE]:
+            self.keys[i] = False
 
         self.ready_to_jump = False
 
@@ -41,39 +54,66 @@ class Player(pygame.sprite.Sprite):
                 if event.key == key:
                     self.keys[key] = True
                     break
+
         if event.type == pygame.KEYUP:
             for key in self.keys:
                 if event.key == key:
                     self.keys[key] = False
                     break
 
-
     def update(self, blocks):
         # change velocity
-        input = [self.keys[key] for key in self.keys]
-
-        if input[0] and input[1]:
+        if self.keys[self.LEFT] and self.keys[self.RIGHT]:
             self.velocity_x = 0
-        elif input[0]:
-            self.velocity_x = -10
-        elif input[1]:
-            self.velocity_x = 10
+        elif self.keys[self.LEFT]:
+            self.velocity_x -= self.velocity_a
+            if self.velocity_x < -self.velocity_max:
+                self.velocity_x = -self.velocity_max
+        elif self.keys[self.RIGHT]:
+            self.velocity_x += self.velocity_a
+            if self.velocity_x > self.velocity_max:
+                self.velocity_x = self.velocity_max
         else:
             self.velocity_x = 0
 
-        if input[2] and self.ready_to_jump:
+        if self.keys[self.UP] and self.ready_to_jump:
+            self.keys[self.UP] = False
             self.ready_to_jump = False
-            self.velocity_y = -70
+            self.velocity_y = -40
+
+        if self.impulse_x != 0:
+            if self.impulse_x > 0:
+                self.impulse_x -= 2
+            else:
+                self.impulse_x += 2
 
         # apply veloticy
-        self.rect.x += self.velocity_x
+        self.rect.x += self.velocity_x + self.impulse_x
 
         block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
         for block in block_hit_list:
             if self.velocity_x > 0:
                 self.rect.right = block.rect.left
+
+                if self.keys[self.RIGHT]:
+                    self.velocity_y = GRAVITY // 4
+
+                    if self.keys[self.UP]:
+                        self.keys[self.RIGHT] = False
+                        self.keys[self.UP] = False
+                        self.impulse_x = -20
+                        self.velocity_y = -30
             elif self.velocity_x < 0:
                 self.rect.left = block.rect.right
+
+                if self.keys[self.LEFT]:
+                    self.velocity_y = GRAVITY // 4
+
+                    if self.keys[self.UP]:
+                        self.keys[self.LEFT] = False
+                        self.keys[self.UP] = False
+                        self.impulse_x = 20
+                        self.velocity_y = -30
 
         self.velocity_y += GRAVITY
         self.rect.y += self.velocity_y
@@ -98,7 +138,7 @@ def main():
 
     sprite_group = pygame.sprite.Group()
 
-    player = Player(sprite_group, square, {pygame.K_LEFT: False, pygame.K_RIGHT: False, pygame.K_UP: False, pygame.K_SPACE: False})
+    player = Player(sprite_group, square, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_SPACE)
 
     blocks = []
     blocks.append(Block(sprite_group, 0, 0, WIDTH, 50))             #top
