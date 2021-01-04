@@ -101,11 +101,11 @@ def main():
     player = Player(sprite_group, square, {pygame.K_LEFT: False, pygame.K_RIGHT: False, pygame.K_UP: False, pygame.K_SPACE: False})
 
     blocks = []
-    blocks.append(Block(sprite_group, 0, HEIGHT - 200, WIDTH, 200))
-    blocks.append(Block(sprite_group, 0, 0, WIDTH, 100))
-    blocks.append(Block(sprite_group, 300, 200, 200, 50))
-    blocks.append(Block(sprite_group, 0, 0, 100, HEIGHT))
-    blocks.append(Block(sprite_group, WIDTH - 100, 0, 100, HEIGHT))
+    blocks.append(Block(sprite_group, 0, 0, WIDTH, 50))             #top
+    blocks.append(Block(sprite_group, 0, 400, WIDTH, 50))           # bot
+    blocks.append(Block(sprite_group, 0, 0, 50, 450))               #left
+    blocks.append(Block(sprite_group, 750, 0, 50, 450))             #right
+    blocks.append(Block(sprite_group, 200, 200, 400, 50)) #center
 
     clock = pygame.time.Clock()
     RUN = True
