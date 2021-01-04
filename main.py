@@ -10,7 +10,7 @@ GRAVITY = 10
 class Block(pygame.sprite.Sprite):
     color = (125, 125, 125)
 
-    def __init__(self, group, x, y, w, h, is_for_jumping=False):
+    def __init__(self, group, x, y, w, h):
         super().__init__(group)
         self.image = pygame.Surface((w, h))
         self.image.fill(Block.color)
@@ -18,68 +18,22 @@ class Block(pygame.sprite.Sprite):
         self.rect.x = x
         self.rect.y = y
 
-        self.is_for_jumping = is_for_jumping
 
-
-class GameObject(pygame.sprite.Sprite):
-    def __init__(self, group: pygame.sprite.Group, apply_gravity: bool, lose_velocity: bool, image: pygame.Surface):
+class Player(pygame.sprite.Sprite):
+    def __init__(self, group: pygame.sprite.Group, image: pygame.Surface, keys: Dict[int, bool]):
         super().__init__(group)
-        self.apply_gravity = apply_gravity
-        self.lose_velocity = lose_velocity
 
         self.image = image
         self.rect = self.image.get_rect()
+        self.rect.x = WIDTH // 2
+        self.rect.y = HEIGHT // 2
 
         self.velocity_x = 0
         self.velocity_y = 0
 
-    def update(self, blocks):
-        # TODO: create new method for every section
-        if self.lose_velocity:
-            pass
+        self.keys = keys
 
-        self.rect.x += self.velocity_x
-
-        block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
-        for block in block_hit_list:
-            if self.velocity_x > 0:
-                self.rect.right = block.rect.left
-            elif self.velocity_x < 0:
-                self.rect.left = block.rect.right
-
-        if self.apply_gravity:
-            self.velocity_y += GRAVITY
-        self.rect.y += self.velocity_y
-
-        block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
-        for block in block_hit_list:
-            if self.velocity_y > 0:
-                self.rect.bottom = block.rect.top
-
-                if type(self) == Player:
-                    self.already_jumped = False
-            elif self.velocity_y < 0:
-                self.rect.top = block.rect.bottom
-
-            self.velocity_y = 0
-
-
-    def set_velocity(self, x: int, y: int):
-        self.velocity_x = x
-        self.velocity_y = y
-
-
-class Player(GameObject):
-    def __init__(self, group: pygame.sprite.Group, image: pygame.Surface, keys: Dict[int, bool]):
-        super().__init__(group, True, True, image)
-
-        #self.speed = 10
-        self.keys = keys # TODO: need to rework
-
-        self.rect.x = WIDTH // 2
-        self.rect.y = HEIGHT // 2
-
-        self.already_jumped = False
+        self.ready_to_jump = False
 
     def control(self, event):
         if event.type == pygame.KEYDOWN:
@@ -93,7 +47,9 @@ class Player(GameObject):
                     self.keys[key] = False
                     break
 
-    def move(self):
+
+    def update(self, blocks):
+        # change velocity
         input = [self.keys[key] for key in self.keys]
 
         if input[0] and input[1]:
@@ -105,9 +61,32 @@ class Player(GameObject):
         else:
             self.velocity_x = 0
 
-        if input[2] and not(self.already_jumped):
-            self.already_jumped = True
+        if input[2] and self.ready_to_jump:
+            self.ready_to_jump = False
             self.velocity_y = -70
+
+        # apply veloticy
+        self.rect.x += self.velocity_x
+
+        block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
+        for block in block_hit_list:
+            if self.velocity_x > 0:
+                self.rect.right = block.rect.left
+            elif self.velocity_x < 0:
+                self.rect.left = block.rect.right
+
+        self.velocity_y += GRAVITY
+        self.rect.y += self.velocity_y
+
+        block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
+        for block in block_hit_list:
+            if self.velocity_y > 0:
+                self.rect.bottom = block.rect.top
+                self.ready_to_jump = True
+            elif self.velocity_y < 0:
+                self.rect.top = block.rect.bottom
+
+            self.velocity_y = 0
 
 
 def main():
@@ -141,7 +120,6 @@ def main():
 
         sprite_group.update(blocks)
         sprite_group.draw(screen)
-        player.move()
         pygame.display.flip()
         clock.tick(FPS)
 
