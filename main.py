@@ -94,6 +94,7 @@ class Player(pygame.sprite.Sprite):
         for block in block_hit_list:
             if self.velocity_x > 0:
                 self.rect.right = block.rect.left
+                self.impulse_x = 0
 
                 if self.keys[self.RIGHT]:
                     self.velocity_y = GRAVITY // 4
@@ -105,6 +106,7 @@ class Player(pygame.sprite.Sprite):
                         self.velocity_y = -30
             elif self.velocity_x < 0:
                 self.rect.left = block.rect.right
+                self.impulse_x = 0
 
                 if self.keys[self.LEFT]:
                     self.velocity_y = GRAVITY // 4
