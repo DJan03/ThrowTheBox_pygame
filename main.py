@@ -70,6 +70,7 @@ class Box(pygame.sprite.Sprite):
         self.velocity_x = x
         self.velocity_y = y
 
+
 class Player(pygame.sprite.Sprite):
     def __init__(self, group: pygame.sprite.Group, image: pygame.Surface, left, right, up, down, use):
         super().__init__(group)
@@ -141,7 +142,7 @@ class Player(pygame.sprite.Sprite):
                 self.impulse_x += 1
 
 
-        # apply veloticy
+        # apply velocity
         self.rect.x += self.velocity_x + self.impulse_x
 
         block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
@@ -185,7 +186,7 @@ class Player(pygame.sprite.Sprite):
             self.velocity_y = 0
 
         # boxes
-        if self.holding_box == None and self.keys[self.USE]:
+        if self.holding_box is None and self.keys[self.USE]:
             box = pygame.sprite.spritecollideany(self, boxes)
             if box != None:
                 self.holding_box = boxes.pop(boxes.index(box))
@@ -195,10 +196,11 @@ class Player(pygame.sprite.Sprite):
             self.holding_box.rect.y = self.rect.y
 
         if self.holding_box != None and self.keys[self.USE] == False:
-            self.holding_box.set_velocity(self.velocity_x * 7, self.velocity_y * 3)
+            self.holding_box.set_velocity(self.velocity_x * 5, self.velocity_y * 3 - 20)
             self.holding_box.apply_velocity = True
             boxes.append(self.holding_box)
             self.holding_box = None
+
 
 def main():
     pygame.init()
