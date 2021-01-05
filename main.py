@@ -19,6 +19,51 @@ class Block(pygame.sprite.Sprite):
         self.rect.y = y
 
 
+class Box(pygame.sprite.Sprite):
+    color = (0, 255, 0)
+
+    def __init__(self, group, x, y, velocity_x, velocity_y):
+        super().__init__(group)
+
+        self.image = pygame.Surface((40, 40))
+        self.image.fill(Box.color)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+        self.velocity_x = velocity_x
+        self.velocity_y = velocity_y
+
+    def update(self, blocks, *args):
+        self.rect.x += self.velocity_x
+
+        block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
+        for block in block_hit_list:
+            if self.velocity_x > 0:
+                self.rect.right = block.rect.left
+                self.velocity_x = -abs(self.velocity_x) // 2
+            elif self.velocity_x < 0:
+                self.rect.left = block.rect.right
+                self.velocity_x = abs(self.velocity_x) // 2
+
+        self.velocity_y += GRAVITY
+        self.rect.y += self.velocity_y
+
+        block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
+        for block in block_hit_list:
+            if self.velocity_y > 0:
+                self.rect.bottom = block.rect.top
+                self.velocity_x = self.velocity_x // 2
+                self.velocity_y = -abs(self.velocity_x) // 2
+            elif self.velocity_y < 0:
+                self.rect.top = block.rect.bottom
+                self.velocity_x = self.velocity_x // 2
+                self.velocity_y = self.velocity_x // 2
+
+        if abs(self.velocity_x) <= 2:
+            self.velocity_x = 0
+
+
 class Player(pygame.sprite.Sprite):
     def __init__(self, group: pygame.sprite.Group, image: pygame.Surface, left, right, up, down, use):
         super().__init__(group)
@@ -61,7 +106,7 @@ class Player(pygame.sprite.Sprite):
                     self.keys[key] = False
                     break
 
-    def update(self, blocks):
+    def update(self, blocks, boxes):
         # change velocity
         if self.keys[self.LEFT] and self.keys[self.RIGHT]:
             self.velocity_x = 0
@@ -86,6 +131,11 @@ class Player(pygame.sprite.Sprite):
                 self.impulse_x -= 2
             else:
                 self.impulse_x += 2
+        # drop boxes
+        if self.keys[self.USE]:
+            self.keys[self.USE] = False
+            boxes.append(Box(self.groups()[0], self.rect.x, self.rect.y, self.velocity_x * 7, self.velocity_y))
+
 
         # apply veloticy
         self.rect.x += self.velocity_x + self.impulse_x
@@ -142,6 +192,8 @@ def main():
 
     player = Player(sprite_group, square, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_SPACE)
 
+    boxes = []
+
     blocks = []
     blocks.append(Block(sprite_group, 0, 0, WIDTH, 50))             #top
     blocks.append(Block(sprite_group, 0, 400, WIDTH, 50))           # bot
@@ -160,7 +212,7 @@ def main():
 
         screen.fill((50, 50, 50))
 
-        sprite_group.update(blocks)
+        sprite_group.update(blocks, boxes)
         sprite_group.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
