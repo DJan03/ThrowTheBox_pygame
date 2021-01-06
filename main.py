@@ -20,13 +20,10 @@ class Block(pygame.sprite.Sprite):
 
 
 class Box(pygame.sprite.Sprite):
-    color = (0, 255, 0)
-
     def __init__(self, group, x, y, apply_velocity=True, velocity_x=0, velocity_y=0):
         super().__init__(group)
 
-        self.image = pygame.Surface((40, 40))
-        self.image.fill(Box.color)
+        self.image = pygame.transform.scale(pygame.image.load("box.png"), (25, 20))
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -72,10 +69,10 @@ class Box(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, group: pygame.sprite.Group, image: pygame.Surface, left, right, up, down, use):
+    def __init__(self, group: pygame.sprite.Group, left, right, up, down, use):
         super().__init__(group)
 
-        self.image = image
+        self.image = pygame.transform.scale(pygame.image.load("hero.png"), (40, 40))
         self.rect = self.image.get_rect()
         self.rect.x = WIDTH // 2
         self.rect.y = HEIGHT // 2
@@ -206,12 +203,9 @@ def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-    square = pygame.Surface((50, 50))
-    square.fill((255, 255, 255))
-
     sprite_group = pygame.sprite.Group()
 
-    player = Player(sprite_group, square, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_SPACE)
+    player = Player(sprite_group, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_SPACE)
 
     boxes = []
     boxes.append(Box(sprite_group, WIDTH // 2, HEIGHT // 2))
