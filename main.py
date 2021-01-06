@@ -112,7 +112,7 @@ class Player(pygame.sprite.Sprite):
                     self.keys[key] = False
                     break
 
-    def update(self, blocks, boxes: List[Box]):
+    def update(self, blocks, boxes: List[Box], *args):
         # change velocity
         if self.keys[self.LEFT] and self.keys[self.RIGHT]:
             self.velocity_x = 0
@@ -205,6 +205,30 @@ class Player(pygame.sprite.Sprite):
         print(self.rect.x, self.rect.y)
 
 
+class Enemy(pygame.sprite.Sprite):
+    color = (30, 30, 30)
+
+    def __init__(self, group, x, y):
+        super().__init__(group)
+        self.image = pygame.Surface((40, 40))
+        self.image.fill(Block.color)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+        self.health = 2
+
+    def update(self, blocks, boxes, enemies):
+        box_hit = pygame.sprite.spritecollideany(self, boxes)
+        if box_hit is not None:
+            self.health -= 1
+            boxes.remove(box_hit)
+            self.groups()[0].remove(box_hit)
+
+            if self.health <= 0:
+                enemies.remove(self)
+                self.groups()[0].remove(self)
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -215,6 +239,7 @@ def main():
 
     boxes = []
     boxes.append(Box(sprite_group, WIDTH // 2, HEIGHT // 2))
+    boxes.append(Box(sprite_group, WIDTH // 2, HEIGHT // 2))
 
     blocks = []
     blocks.append(Block(sprite_group, 0, 0, WIDTH, 50))             #top
@@ -222,6 +247,9 @@ def main():
     blocks.append(Block(sprite_group, 0, 0, 50, 450))               #left
     blocks.append(Block(sprite_group, 750, 0, 50, 450))             #right
     blocks.append(Block(sprite_group, 200, 200, 400, 50)) #center
+
+    enemies = []
+    enemies.append(Enemy(sprite_group, WIDTH // 2, 100))
 
     clock = pygame.time.Clock()
     RUN = True
@@ -234,7 +262,7 @@ def main():
 
         screen.fill((50, 50, 50))
 
-        sprite_group.update(blocks, boxes)
+        sprite_group.update(blocks, boxes, enemies)
         sprite_group.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
