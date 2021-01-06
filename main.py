@@ -6,6 +6,43 @@ WIDTH, HEIGHT = 800, 600
 FPS = 60
 GRAVITY = 4
 
+class ObjectManager:
+    BLOCK_KEY = "block"
+    BOX_KEY = "box"
+    PLAYER_KEY = "player"
+    ENEMY_KEY = "enemy"
+    BULLET_KEY = "bullet"
+
+    def __init__(self):
+        self.sprite_group = pygame.sprite.Group()
+        self.lib = {}
+
+        for key in [ObjectManager.BLOCK_KEY,
+                    ObjectManager.BOX_KEY,
+                    ObjectManager.PLAYER_KEY,
+                    ObjectManager.ENEMY_KEY,
+                    ObjectManager.BULLET_KEY]:
+            self.lib[key] = []
+
+    def player_control(self, event):
+        self.lib[ObjectManager.PLAYER_KEY][0].control(event)
+
+    def draw(self, screen):
+        self.sprite_group.draw(screen)
+
+    def update(self):
+        self.sprite_group.update(self)
+
+    def remove(self, object, key):
+        self.sprite_group.remove(object)
+        self.lib[key].remove(object)
+
+    def append(self, object, key):
+        self.lib[key].append(object)
+
+    def get(self, key):
+        return self.lib[key]
+
 
 class Block(pygame.sprite.Sprite):
     color = (125, 125, 125)
@@ -33,11 +70,11 @@ class Box(pygame.sprite.Sprite):
 
         self.apply_velocity = apply_velocity
 
-    def update(self, blocks, *args):
+    def update(self, objectManager: ObjectManager):
         if self.apply_velocity:
             self.rect.x += self.velocity_x
 
-            block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
+            block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
             for block in block_hit_list:
                 if self.velocity_x > 0:
                     self.rect.right = block.rect.left
@@ -49,7 +86,7 @@ class Box(pygame.sprite.Sprite):
             self.velocity_y += GRAVITY
             self.rect.y += self.velocity_y
 
-            block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
+            block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
             for block in block_hit_list:
                 if self.velocity_y > 0:
                     self.rect.bottom = block.rect.top
@@ -69,7 +106,11 @@ class Box(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, group: pygame.sprite.Group, left, right, up, down, use):
+    def __init__(self, group: pygame.sprite.Group,
+                 left=pygame.K_LEFT,
+                 right=pygame.K_RIGHT,
+                 up=pygame.K_UP, down=pygame.K_DOWN,
+                 use=pygame.K_SPACE):
         super().__init__(group)
 
         self.image = pygame.transform.scale(pygame.image.load("hero.png"), (40, 40))
@@ -112,7 +153,7 @@ class Player(pygame.sprite.Sprite):
                     self.keys[key] = False
                     break
 
-    def update(self, blocks, boxes: List[Box], *args):
+    def update(self, objectManager: ObjectManager):
         # change velocity
         if self.keys[self.LEFT] and self.keys[self.RIGHT]:
             self.velocity_x = 0
@@ -138,11 +179,10 @@ class Player(pygame.sprite.Sprite):
             else:
                 self.impulse_x += 1
 
-
         # apply velocity
         self.rect.x += self.velocity_x + self.impulse_x
 
-        block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
+        block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
         for block in block_hit_list:
             if self.velocity_x > 0:
                 self.rect.right = block.rect.left
@@ -172,7 +212,7 @@ class Player(pygame.sprite.Sprite):
         self.velocity_y += GRAVITY
         self.rect.y += self.velocity_y
 
-        block_hit_list = pygame.sprite.spritecollide(self, blocks, False)
+        block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
         for block in block_hit_list:
             if self.velocity_y > 0:
                 self.rect.bottom = block.rect.top
@@ -184,9 +224,9 @@ class Player(pygame.sprite.Sprite):
 
         # boxes
         if self.holding_box is None and self.keys[self.USE]:
-            box = pygame.sprite.spritecollideany(self, boxes)
+            box = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BOX_KEY))
             if box != None:
-                self.holding_box = boxes.pop(boxes.index(box))
+                self.holding_box = objectManager.get(ObjectManager.BOX_KEY).pop(objectManager.get(ObjectManager.BOX_KEY).index(box)) # TODO: fix this strange line
                 self.holding_box.apply_velocity = False
         if self.holding_box != None and self.keys[self.USE]:
             self.holding_box.rect.x = self.rect.x
@@ -195,7 +235,7 @@ class Player(pygame.sprite.Sprite):
         if self.holding_box != None and self.keys[self.USE] == False:
             self.holding_box.set_velocity(self.velocity_x * 5, self.velocity_y * 3 - 20)
             self.holding_box.apply_velocity = True
-            boxes.append(self.holding_box)
+            objectManager.get(ObjectManager.BOX_KEY).append(self.holding_box) # TODO: change strange line
             self.holding_box = None
 
         if self.rect.x < 0 or self.rect.x > WIDTH or self.rect.y < 0 or self.rect.y > HEIGHT:
@@ -218,38 +258,34 @@ class Enemy(pygame.sprite.Sprite):
 
         self.health = 2
 
-    def update(self, blocks, boxes, enemies):
-        box_hit = pygame.sprite.spritecollideany(self, boxes)
+    def update(self, objectManager: ObjectManager):
+        box_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BOX_KEY))
         if box_hit is not None:
             self.health -= 1
-            boxes.remove(box_hit)
-            self.groups()[0].remove(box_hit)
+            objectManager.remove(box_hit, ObjectManager.BOX_KEY)
 
             if self.health <= 0:
-                enemies.remove(self)
-                self.groups()[0].remove(self)
+                objectManager.remove(self, ObjectManager.ENEMY_KEY)
+
 
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-    sprite_group = pygame.sprite.Group()
+    objectManager = ObjectManager()
 
-    player = Player(sprite_group, pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN, pygame.K_SPACE)
+    objectManager.append(Player(objectManager.sprite_group), ObjectManager.PLAYER_KEY)
 
-    boxes = []
-    boxes.append(Box(sprite_group, WIDTH // 2, HEIGHT // 2))
-    boxes.append(Box(sprite_group, WIDTH // 2, HEIGHT // 2))
+    objectManager.append(Block(objectManager.sprite_group, 0, 0, WIDTH, 50), ObjectManager.BLOCK_KEY)  # top
+    objectManager.append(Block(objectManager.sprite_group, 0, 400, WIDTH, 50), ObjectManager.BLOCK_KEY)  # bot
+    objectManager.append(Block(objectManager.sprite_group, 0, 0, 50, 450), ObjectManager.BLOCK_KEY)  # left
+    objectManager.append(Block(objectManager.sprite_group, 750, 0, 50, 450), ObjectManager.BLOCK_KEY)  # right
+    objectManager.append(Block(objectManager.sprite_group, 200, 200, 400, 50), ObjectManager.BLOCK_KEY)  # center
 
-    blocks = []
-    blocks.append(Block(sprite_group, 0, 0, WIDTH, 50))             #top
-    blocks.append(Block(sprite_group, 0, 400, WIDTH, 50))           # bot
-    blocks.append(Block(sprite_group, 0, 0, 50, 450))               #left
-    blocks.append(Block(sprite_group, 750, 0, 50, 450))             #right
-    blocks.append(Block(sprite_group, 200, 200, 400, 50)) #center
+    objectManager.append(Box(objectManager.sprite_group, WIDTH // 2, HEIGHT // 2), ObjectManager.BOX_KEY)
+    objectManager.append(Box(objectManager.sprite_group, WIDTH // 2, HEIGHT // 2), ObjectManager.BOX_KEY)
 
-    enemies = []
-    enemies.append(Enemy(sprite_group, WIDTH // 2, 100))
+    objectManager.append(Enemy(objectManager.sprite_group, WIDTH // 2, 100), ObjectManager.ENEMY_KEY)
 
     clock = pygame.time.Clock()
     RUN = True
@@ -258,12 +294,13 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 RUN = False
-            player.control(event)
+            objectManager.player_control(event)
 
         screen.fill((50, 50, 50))
 
-        sprite_group.update(blocks, boxes, enemies)
-        sprite_group.draw(screen)
+        objectManager.update()
+        objectManager.draw(screen)
+
         pygame.display.flip()
         clock.tick(FPS)
 
