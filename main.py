@@ -198,6 +198,12 @@ class Player(pygame.sprite.Sprite):
             boxes.append(self.holding_box)
             self.holding_box = None
 
+        if self.rect.x < 0 or self.rect.x > WIDTH or self.rect.y < 0 or self.rect.y > HEIGHT:
+            self.rect.x = WIDTH // 2
+            self.rect.y = HEIGHT // 2
+
+        print(self.rect.x, self.rect.y)
+
 
 def main():
     pygame.init()
