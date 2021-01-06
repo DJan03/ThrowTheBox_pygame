@@ -337,8 +337,9 @@ class Enemy(pygame.sprite.Sprite):
 
 class SpawnManager:
     def __init__(self):
-        self.points_for_enemy = [(125, 125), (275, 125), (400, 125), (525, 125), (675, 125)]
-        self.points_for_boxes = [(400, 325)]
+        self.points_for_enemy = [(125, 125), (275, 125), (400, 125), (525, 125), (675, 125),
+                                 (125, 325), (275, 325), (400, 325), (525, 325), (675, 325)]
+        self.points_for_boxes = [(275, 125), (400, 125), (525, 125), (125, 325), (275, 325), (400, 325), (525, 325), (675, 325)]
 
     def get_point_for_enemy(self):
         return choice(self.points_for_enemy)
