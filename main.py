@@ -46,7 +46,7 @@ class ObjectManager:
 
 
 class Block(pygame.sprite.Sprite):
-    color = (125, 125, 125)
+    color = (170, 170, 170)
 
     def __init__(self, group, x, y, w, h):
         super().__init__(group)
@@ -260,12 +260,10 @@ class Player(pygame.sprite.Sprite):
 
 
 class Bullet(pygame.sprite.Sprite):
-    color = (255, 0, 0)
     def __init__(self, group, x, y, velocity_x, velocity_y):
         super().__init__(group)
 
-        self.image = pygame.Surface((20, 20))
-        pygame.draw.circle(self.image, Bullet.color, (10, 10), 10)
+        self.image = pygame.transform.scale(pygame.image.load("bullet.png"), (20, 20))
 
         self.rect = self.image.get_rect()
         self.rect.x = x
@@ -283,13 +281,12 @@ class Bullet(pygame.sprite.Sprite):
         if block_hit is not None:
             objectManager.remove(self, ObjectManager.BULLET_KEY)
 
-class Enemy(pygame.sprite.Sprite):
-    color = (30, 30, 30)
 
+class Enemy(pygame.sprite.Sprite):
     def __init__(self, group, x, y, shoot_cooldown):
         super().__init__(group)
-        self.image = pygame.Surface((40, 40))
-        self.image.fill(Block.color)
+        self.image = pygame.transform.scale(pygame.image.load("enemy.png"), (40, 40))
+
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -357,7 +354,7 @@ def main():
                 RUN = False
             objectManager.player_control(event)
 
-        screen.fill((50, 50, 50))
+        screen.fill((70, 70, 70))
 
         objectManager.update()
         objectManager.draw(screen)
