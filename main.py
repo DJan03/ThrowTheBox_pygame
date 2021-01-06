@@ -109,8 +109,10 @@ class Player(pygame.sprite.Sprite):
     def __init__(self, group: pygame.sprite.Group,
                  left=pygame.K_LEFT,
                  right=pygame.K_RIGHT,
-                 up=pygame.K_UP, down=pygame.K_DOWN,
-                 use=pygame.K_SPACE):
+                 up=pygame.K_UP,
+                 down=pygame.K_DOWN,
+                 jump=pygame.K_c,
+                 hold=pygame.K_x):
         super().__init__(group)
 
         self.image = pygame.transform.scale(pygame.image.load("hero.png"), (40, 40))
@@ -130,10 +132,11 @@ class Player(pygame.sprite.Sprite):
         self.RIGHT = right
         self.UP = up
         self.DOWN = down
-        self.USE = use
+        self.JUMP = jump
+        self.HOLD = hold
         self.keys = {}
 
-        for i in [self.LEFT, self.RIGHT, self.UP, self.DOWN, self.USE]:
+        for i in [self.LEFT, self.RIGHT, self.UP, self.DOWN, self.JUMP, self.HOLD]:
             self.keys[i] = False
 
         self.ready_to_jump = False
@@ -168,8 +171,8 @@ class Player(pygame.sprite.Sprite):
         else:
             self.velocity_x = 0
 
-        if self.keys[self.UP] and self.ready_to_jump:
-            self.keys[self.UP] = False
+        if self.keys[self.JUMP] and self.ready_to_jump:
+            self.keys[self.JUMP] = False
             self.ready_to_jump = False
             self.velocity_y = -40
 
@@ -191,9 +194,9 @@ class Player(pygame.sprite.Sprite):
                 if self.keys[self.RIGHT]:
                     self.velocity_y = GRAVITY // 4
 
-                    if self.keys[self.UP]:
+                    if self.keys[self.JUMP]:
                         self.keys[self.RIGHT] = False
-                        self.keys[self.UP] = False
+                        self.keys[self.JUMP] = False
                         self.impulse_x = -20
                         self.velocity_y = -30
             elif self.velocity_x < 0:
@@ -203,9 +206,9 @@ class Player(pygame.sprite.Sprite):
                 if self.keys[self.LEFT]:
                     self.velocity_y = GRAVITY // 4
 
-                    if self.keys[self.UP]:
+                    if self.keys[self.JUMP]:
                         self.keys[self.LEFT] = False
-                        self.keys[self.UP] = False
+                        self.keys[self.JUMP] = False
                         self.impulse_x = 20
                         self.velocity_y = -30
 
@@ -223,17 +226,29 @@ class Player(pygame.sprite.Sprite):
             self.velocity_y = 0
 
         # boxes
-        if self.holding_box is None and self.keys[self.USE]:
+        if self.holding_box is None and self.keys[self.HOLD]:
             box = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BOX_KEY))
             if box != None:
                 self.holding_box = objectManager.get(ObjectManager.BOX_KEY).pop(objectManager.get(ObjectManager.BOX_KEY).index(box)) # TODO: fix this strange line
                 self.holding_box.apply_velocity = False
-        if self.holding_box != None and self.keys[self.USE]:
+        if self.holding_box != None and self.keys[self.HOLD]:
             self.holding_box.rect.x = self.rect.x
             self.holding_box.rect.y = self.rect.y
 
-        if self.holding_box != None and self.keys[self.USE] == False:
-            self.holding_box.set_velocity(self.velocity_x * 5, self.velocity_y * 3 - 20)
+        if self.holding_box != None and self.keys[self.HOLD] == False:
+            v_x = 0
+            v_y = 0
+
+            if self.keys[self.UP]:
+                v_y -= 1
+            if self.keys[self.DOWN]:
+                v_y += 1
+            if self.keys[self.LEFT]:
+                v_x -= 1
+            if self.keys[self.RIGHT]:
+                v_x += 1
+
+            self.holding_box.set_velocity(v_x * 20, v_y * 20 - 20)
             self.holding_box.apply_velocity = True
             objectManager.get(ObjectManager.BOX_KEY).append(self.holding_box) # TODO: change strange line
             self.holding_box = None
@@ -241,8 +256,6 @@ class Player(pygame.sprite.Sprite):
         if self.rect.x < 0 or self.rect.x > WIDTH or self.rect.y < 0 or self.rect.y > HEIGHT:
             self.rect.x = WIDTH // 2
             self.rect.y = HEIGHT // 2
-
-        print(self.rect.x, self.rect.y)
 
 
 class Enemy(pygame.sprite.Sprite):
