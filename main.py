@@ -7,6 +7,7 @@ WIDTH, HEIGHT = 800, 600
 FPS = 60
 GRAVITY = 4
 
+
 class ObjectManager:
     BLOCK_KEY = "block"
     BOX_KEY = "box"
@@ -63,8 +64,12 @@ class Box(pygame.sprite.Sprite):
 
         self.image = pygame.transform.scale(pygame.image.load("box.png"), (25, 20))
         self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.rect.center = self.rect.w // 2, self.rect.h // 2
+        print(self.rect.center)
+        self.rect.centerx = x
+        self.rect.centery = y
+        print(self.rect.center)
+
 
         self.velocity_x = velocity_x
         self.velocity_y = velocity_y
@@ -117,9 +122,11 @@ class Player(pygame.sprite.Sprite):
         super().__init__(group)
 
         self.image = pygame.transform.scale(pygame.image.load("hero.png"), (40, 40))
+
         self.rect = self.image.get_rect()
-        self.rect.x = WIDTH // 2
-        self.rect.y = HEIGHT // 2
+        self.rect.center = 20, 20
+        self.rect.centerx = WIDTH // 2
+        self.rect.centery = HEIGHT // 2
 
         self.velocity_x = 0
         self.velocity_y = 0
@@ -184,7 +191,7 @@ class Player(pygame.sprite.Sprite):
                 self.impulse_x += 1
 
         # apply velocity
-        self.rect.x += self.velocity_x + self.impulse_x
+        self.rect.centerx += self.velocity_x + self.impulse_x
 
         block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
         for block in block_hit_list:
@@ -214,7 +221,7 @@ class Player(pygame.sprite.Sprite):
                         self.velocity_y = -30
 
         self.velocity_y += GRAVITY
-        self.rect.y += self.velocity_y
+        self.rect.centery += self.velocity_y
 
         block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
         for block in block_hit_list:
@@ -233,8 +240,8 @@ class Player(pygame.sprite.Sprite):
                 self.holding_box = objectManager.get(ObjectManager.BOX_KEY).pop(objectManager.get(ObjectManager.BOX_KEY).index(box)) # TODO: fix this strange line
                 self.holding_box.apply_velocity = False
         if self.holding_box != None and self.keys[self.HOLD]:
-            self.holding_box.rect.x = self.rect.x
-            self.holding_box.rect.y = self.rect.y
+            self.holding_box.rect.centerx = self.rect.centerx
+            self.holding_box.rect.centery = self.rect.centery
 
         if self.holding_box != None and self.keys[self.HOLD] == False:
             v_x = 0
@@ -254,9 +261,9 @@ class Player(pygame.sprite.Sprite):
             objectManager.get(ObjectManager.BOX_KEY).append(self.holding_box) # TODO: change strange line
             self.holding_box = None
 
-        if self.rect.x < 0 or self.rect.x > WIDTH or self.rect.y < 0 or self.rect.y > HEIGHT:
-            self.rect.x = WIDTH // 2
-            self.rect.y = HEIGHT // 2
+        if self.rect.centerx < 0 or self.rect.centerx > WIDTH or self.rect.centery < 0 or self.rect.centery > HEIGHT:
+            self.rect.centerx = WIDTH // 2
+            self.rect.centery = HEIGHT // 2
 
 
 class Bullet(pygame.sprite.Sprite):
@@ -266,14 +273,14 @@ class Bullet(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(pygame.image.load("bullet.png"), (20, 20))
 
         self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.rect.center = 10, 10
+        self.rect.centerx = x
+        self.rect.centery = y
 
         self.velocity_x = velocity_x
         self.velocity_y = velocity_y
 
     def update(self, objectManager: ObjectManager):
-        print(self.rect.x, self.rect.y)
         self.rect.x += self.velocity_x
         self.rect.y += self.velocity_y
 
@@ -288,8 +295,9 @@ class Enemy(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(pygame.image.load("enemy.png"), (40, 40))
 
         self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
+        self.rect.center = 20, 20
+        self.rect.centerx = x
+        self.rect.centery = y
 
         self.health = 2
         
@@ -313,8 +321,8 @@ class Enemy(pygame.sprite.Sprite):
             self.time_to_shoot -= 1
     
     def shoot(self, objectManager: ObjectManager):
-        delta_x = objectManager.get(ObjectManager.PLAYER_KEY)[0].rect.x - self.rect.x
-        delta_y = objectManager.get(ObjectManager.PLAYER_KEY)[0].rect.y - self.rect.y
+        delta_x = objectManager.get(ObjectManager.PLAYER_KEY)[0].rect.centerx - self.rect.centerx
+        delta_y = objectManager.get(ObjectManager.PLAYER_KEY)[0].rect.centery - self.rect.centery
 
         k = sqrt(delta_x ** 2 + delta_y ** 2)
 
@@ -323,7 +331,7 @@ class Enemy(pygame.sprite.Sprite):
         v_x = (delta_x * speed) // k
         v_y = (delta_y * speed) // k
 
-        objectManager.append(Bullet(objectManager.sprite_group, self.rect.x, self.rect.y, v_x, v_y), ObjectManager.BULLET_KEY)
+        objectManager.append(Bullet(objectManager.sprite_group, self.rect.centerx, self.rect.centery, v_x, v_y), ObjectManager.BULLET_KEY)
 
 
 def main():
