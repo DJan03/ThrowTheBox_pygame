@@ -1,5 +1,6 @@
 import pygame
 from typing import List, Dict
+from math import sqrt
 
 
 WIDTH, HEIGHT = 800, 600
@@ -258,10 +259,34 @@ class Player(pygame.sprite.Sprite):
             self.rect.y = HEIGHT // 2
 
 
+class Bullet(pygame.sprite.Sprite):
+    color = (255, 0, 0)
+    def __init__(self, group, x, y, velocity_x, velocity_y):
+        super().__init__(group)
+
+        self.image = pygame.Surface((20, 20))
+        pygame.draw.circle(self.image, Bullet.color, (10, 10), 10)
+
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+
+        self.velocity_x = velocity_x
+        self.velocity_y = velocity_y
+
+    def update(self, objectManager: ObjectManager):
+        print(self.rect.x, self.rect.y)
+        self.rect.x += self.velocity_x
+        self.rect.y += self.velocity_y
+
+        block_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BLOCK_KEY))
+        if block_hit is not None:
+            objectManager.remove(self, ObjectManager.BULLET_KEY)
+
 class Enemy(pygame.sprite.Sprite):
     color = (30, 30, 30)
 
-    def __init__(self, group, x, y):
+    def __init__(self, group, x, y, shoot_cooldown):
         super().__init__(group)
         self.image = pygame.Surface((40, 40))
         self.image.fill(Block.color)
@@ -270,6 +295,9 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.y = y
 
         self.health = 2
+        
+        self.time_to_shoot = shoot_cooldown
+        self.shoot_cooldown = shoot_cooldown
 
     def update(self, objectManager: ObjectManager):
         box_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BOX_KEY))
@@ -279,6 +307,26 @@ class Enemy(pygame.sprite.Sprite):
 
             if self.health <= 0:
                 objectManager.remove(self, ObjectManager.ENEMY_KEY)
+        
+        # shoot
+        if self.time_to_shoot <= 0:
+            self.time_to_shoot = self.shoot_cooldown
+            self.shoot(objectManager)
+        else:
+            self.time_to_shoot -= 1
+    
+    def shoot(self, objectManager: ObjectManager):
+        delta_x = objectManager.get(ObjectManager.PLAYER_KEY)[0].rect.x - self.rect.x
+        delta_y = objectManager.get(ObjectManager.PLAYER_KEY)[0].rect.y - self.rect.y
+
+        k = sqrt(delta_x ** 2 + delta_y ** 2)
+
+        speed = 5
+
+        v_x = (delta_x * speed) // k
+        v_y = (delta_y * speed) // k
+
+        objectManager.append(Bullet(objectManager.sprite_group, self.rect.x, self.rect.y, v_x, v_y), ObjectManager.BULLET_KEY)
 
 
 def main():
@@ -298,7 +346,7 @@ def main():
     objectManager.append(Box(objectManager.sprite_group, WIDTH // 2, HEIGHT // 2), ObjectManager.BOX_KEY)
     objectManager.append(Box(objectManager.sprite_group, WIDTH // 2, HEIGHT // 2), ObjectManager.BOX_KEY)
 
-    objectManager.append(Enemy(objectManager.sprite_group, WIDTH // 2, 100), ObjectManager.ENEMY_KEY)
+    objectManager.append(Enemy(objectManager.sprite_group, WIDTH // 2, 100, 50), ObjectManager.ENEMY_KEY)
 
     clock = pygame.time.Clock()
     RUN = True
