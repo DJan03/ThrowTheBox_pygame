@@ -1,6 +1,7 @@
 import pygame
 from typing import List, Dict
 from math import sqrt
+from random import choice
 
 
 WIDTH, HEIGHT = 800, 600
@@ -334,9 +335,23 @@ class Enemy(pygame.sprite.Sprite):
         objectManager.append(Bullet(objectManager.sprite_group, self.rect.centerx, self.rect.centery, v_x, v_y), ObjectManager.BULLET_KEY)
 
 
+class SpawnManager:
+    def __init__(self):
+        self.points_for_enemy = [(125, 125), (275, 125), (400, 125), (525, 125), (675, 125)]
+        self.points_for_boxes = [(400, 325)]
+
+    def get_point_for_enemy(self):
+        return choice(self.points_for_enemy)
+
+    def get_point_for_box(self):
+        return choice(self.points_for_boxes)
+
+
 def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+    spawnManager = SpawnManager()
 
     objectManager = ObjectManager()
 
@@ -348,10 +363,12 @@ def main():
     objectManager.append(Block(objectManager.sprite_group, 750, 0, 50, 450), ObjectManager.BLOCK_KEY)  # right
     objectManager.append(Block(objectManager.sprite_group, 200, 200, 400, 50), ObjectManager.BLOCK_KEY)  # center
 
-    objectManager.append(Box(objectManager.sprite_group, WIDTH // 2, HEIGHT // 2), ObjectManager.BOX_KEY)
-    objectManager.append(Box(objectManager.sprite_group, WIDTH // 2, HEIGHT // 2), ObjectManager.BOX_KEY)
+    x, y = spawnManager.get_point_for_box()
+    objectManager.append(Box(objectManager.sprite_group, x, y), ObjectManager.BOX_KEY)
+    objectManager.append(Box(objectManager.sprite_group, x, y), ObjectManager.BOX_KEY)
 
-    objectManager.append(Enemy(objectManager.sprite_group, WIDTH // 2, 100, 50), ObjectManager.ENEMY_KEY)
+    x, y = spawnManager.get_point_for_enemy()
+    objectManager.append(Enemy(objectManager.sprite_group, x, y, 50), ObjectManager.ENEMY_KEY)
 
     clock = pygame.time.Clock()
     RUN = True
