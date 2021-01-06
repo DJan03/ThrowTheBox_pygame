@@ -1,7 +1,8 @@
 import pygame
 from typing import List, Dict
 from math import sqrt
-from random import choice
+from random import shuffle
+from copy import deepcopy
 
 
 WIDTH, HEIGHT = 800, 600
@@ -66,10 +67,8 @@ class Box(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(pygame.image.load("box.png"), (25, 20))
         self.rect = self.image.get_rect()
         self.rect.center = self.rect.w // 2, self.rect.h // 2
-        print(self.rect.center)
         self.rect.centerx = x
         self.rect.centery = y
-        print(self.rect.center)
 
 
         self.velocity_x = velocity_x
@@ -291,7 +290,7 @@ class Bullet(pygame.sprite.Sprite):
 
 
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, group, x, y, shoot_cooldown):
+    def __init__(self, group, x, y, shoot_cooldown=50):
         super().__init__(group)
         self.image = pygame.transform.scale(pygame.image.load("enemy.png"), (40, 40))
 
@@ -339,13 +338,25 @@ class SpawnManager:
     def __init__(self):
         self.points_for_enemy = [(125, 125), (275, 125), (400, 125), (525, 125), (675, 125),
                                  (125, 325), (275, 325), (400, 325), (525, 325), (675, 325)]
-        self.points_for_boxes = [(275, 125), (400, 125), (525, 125), (125, 325), (275, 325), (400, 325), (525, 325), (675, 325)]
+        self.points_for_box = [(275, 125), (400, 125), (525, 125), (125, 325), (275, 325), (400, 325), (525, 325), (675, 325)]
 
-    def get_point_for_enemy(self):
-        return choice(self.points_for_enemy)
+    def get_points_for_enemies(self, count):
+        points = deepcopy(self.points_for_enemy)
+        shuffle(points)
+        return points[:count]
 
-    def get_point_for_box(self):
-        return choice(self.points_for_boxes)
+    def get_points_for_box(self, count):
+        points = deepcopy(self.points_for_box)
+        shuffle(points)
+        return points[:count]
+
+    def generate_new_level(self, objectManager):
+        enemies_count = 1
+        for x, y in self.get_points_for_enemies(enemies_count):
+            objectManager.append(Enemy(objectManager.sprite_group, x, y), ObjectManager.ENEMY_KEY)
+
+        for x, y in self.get_points_for_box(enemies_count * 2):
+            objectManager.append(Box(objectManager.sprite_group, x, y), ObjectManager.BOX_KEY)
 
 
 def main():
@@ -364,12 +375,7 @@ def main():
     objectManager.append(Block(objectManager.sprite_group, 750, 0, 50, 450), ObjectManager.BLOCK_KEY)  # right
     objectManager.append(Block(objectManager.sprite_group, 200, 200, 400, 50), ObjectManager.BLOCK_KEY)  # center
 
-    x, y = spawnManager.get_point_for_box()
-    objectManager.append(Box(objectManager.sprite_group, x, y), ObjectManager.BOX_KEY)
-    objectManager.append(Box(objectManager.sprite_group, x, y), ObjectManager.BOX_KEY)
-
-    x, y = spawnManager.get_point_for_enemy()
-    objectManager.append(Enemy(objectManager.sprite_group, x, y, 50), ObjectManager.ENEMY_KEY)
+    spawnManager.generate_new_level(objectManager)
 
     clock = pygame.time.Clock()
     RUN = True
@@ -384,6 +390,9 @@ def main():
 
         objectManager.update()
         objectManager.draw(screen)
+
+        if objectManager.get(ObjectManager.ENEMY_KEY) == []:
+            spawnManager.generate_new_level(objectManager)
 
         pygame.display.flip()
         clock.tick(FPS)
