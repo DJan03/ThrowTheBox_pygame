@@ -56,6 +56,12 @@ class ObjectManager:
     def player(self):
         return self.lib[ObjectManager.PLAYER_KEY][0]
 
+    def clear(self):
+        for i in [ObjectManager.BOX_KEY, ObjectManager.ENEMY_KEY, ObjectManager.BULLET_KEY]:
+            a = self.lib[i].copy()
+            for j in a:
+                self.remove(j, i)
+
 
 class Block(pygame.sprite.Sprite):
     color = (170, 170, 170)
@@ -337,6 +343,9 @@ class Player(pygame.sprite.Sprite):
         if self.ability_lib[self.SPEED_UP]:
             self.velocity_max = SPEED_UP_POWER
 
+    def lose_health(self):
+        self.health -= 1
+
     def is_live(self):
         return self.health > 0
 
@@ -365,7 +374,7 @@ class Bullet(pygame.sprite.Sprite):
 
         player_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.PLAYER_KEY))
         if player_hit is not None:
-            player_hit.health -= 1
+            objectManager.player().lose_health()
             objectManager.remove(self, objectManager.BULLET_KEY)
 
 
@@ -444,6 +453,7 @@ class SpawnManager:
         return points[:count]
 
     def generate_new_level(self, objectManager, player: Player):
+        objectManager.clear()
         enemies_count = 1
         for x, y in self.get_points_for_enemies(enemies_count):
             objectManager.append(Enemy(objectManager.sprite_group, x, y), ObjectManager.ENEMY_KEY)
