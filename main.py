@@ -530,7 +530,18 @@ def main():
     objectManager.append(Block(objectManager.sprite_group, 200, 200, 400, 50), ObjectManager.BLOCK_KEY)  # center
 
     # area for player's abilities
+    #objectManager.player().add_ability(objectManager.player().FROZEN_BOXES)
+    #objectManager.player().add_ability(objectManager.player().NOGRAV_THROW)
+    #objectManager.player().add_ability(objectManager.player().SPEED_UP)
+    #objectManager.player().add_ability(objectManager.player().MISS)
     #objectManager.player().add_ability(objectManager.player().HEALTH_UP)
+    #objectManager.player().add_ability(objectManager.player().HEART_BOXES)
+    #objectManager.player().add_ability(objectManager.player().POWER_THROW)
+    #objectManager.player().add_ability(objectManager.player().CURSED_BOXES)
+    #objectManager.player().add_ability(objectManager.player().TURTLE)
+    #objectManager.player().add_ability(objectManager.player().CHOICE_UP)
+    #objectManager.player().add_ability(objectManager.player().MORE_BOXES)
+    #objectManager.player().add_ability(objectManager.player().HIT_BOXES)
 
     spawnManager.generate_new_level(objectManager, objectManager.player())
 
