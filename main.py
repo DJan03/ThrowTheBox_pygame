@@ -109,7 +109,7 @@ class Heart(pygame.sprite.Sprite):
 
 
 class Box(pygame.sprite.Sprite):
-    image = pygame.transform.scale(pygame.image.load("box.png"), (25, 20))
+    image = pygame.transform.scale(pygame.image.load("data/box.png"), (25, 20))
     def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True, apply_gravity=True, is_heart_box=False, is_bullet_box=False):
         super().__init__(group)
 
@@ -208,7 +208,7 @@ class Player(pygame.sprite.Sprite):
                  hold=pygame.K_x):
         super().__init__(group)
 
-        self.image = pygame.transform.scale(pygame.image.load("hero.png"), (40, 40))
+        self.image = pygame.transform.scale(pygame.image.load("data/hero.png"), (40, 40))
 
         self.rect = self.image.get_rect()
         self.rect.center = 20, 20
@@ -430,7 +430,7 @@ class Bullet(pygame.sprite.Sprite):
     def __init__(self, group, x, y, velocity_x, velocity_y):
         super().__init__(group)
 
-        self.image = pygame.transform.scale(pygame.image.load("bullet.png"), (20, 20))
+        self.image = pygame.transform.scale(pygame.image.load("data/bullet.png"), (20, 20))
 
         self.rect = self.image.get_rect()
         self.rect.center = 10, 10
@@ -455,7 +455,7 @@ class Bullet(pygame.sprite.Sprite):
 
 
 class Enemy(pygame.sprite.Sprite):
-    image = pygame.transform.scale(pygame.image.load("enemy.png"), (40, 40))
+    image = pygame.transform.scale(pygame.image.load("data/enemy.png"), (40, 40))
     def __init__(self, group, x, y, shoot_cooldown=50):
         super().__init__(group)
         self.image = Enemy.image.copy()
@@ -571,8 +571,8 @@ class UI:
         self.player_health = 3
         self.max_player_health = 3
 
-        self.heart_full_img = pygame.transform.scale(pygame.image.load("heart_full.png"), (45, 35))
-        self.heart_empty_img = pygame.transform.scale(pygame.image.load("heart_empty.png"), (45, 35))
+        self.heart_full_img = pygame.transform.scale(pygame.image.load("data/heart_full.png"), (45, 35))
+        self.heart_empty_img = pygame.transform.scale(pygame.image.load("data/heart_empty.png"), (45, 35))
 
         self.heart_full_rect = self.heart_full_img.get_rect()
         self.heart_empty_rect = self.heart_empty_img.get_rect()
@@ -580,11 +580,14 @@ class UI:
         self.heart_full_rect.center = 22, 16
         self.heart_empty_rect.center = 22, 16
 
+        self.card_img = pygame.Surface((70, 90))
+        self.card_img.fill((255, 255, 255))
+
     def update(self, player: Player):
         self.player_health = player.health
         self.max_player_health = player.max_health
 
-    def draw(self, screen):
+    def draw(self, screen: pygame.Surface):
         screen.blit(self.background, (0, HEIGHT - 150, WIDTH, 150))
 
         for i in range(self.max_player_health):
@@ -596,6 +599,9 @@ class UI:
         #dark_screen = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
         #dark_screen.fill(pygame.Color(0, 0, 0, 80))
         #screen.blit(dark_screen, (0, 0))
+
+        for i in range(10):
+            screen.blit(self.card_img, (5 + i * 80, 500))
 
 
 def main():
