@@ -14,6 +14,8 @@ WINDOW_IS_OPEN = True
 FROZE_DURATION = 200
 FROZE_BOXES_CHANCE = 0.2
 SPEED_UP_POWER = 12
+MISS_CHANCE = 0.1
+HEALTH_UP_POWER = 4
 
 
 class ObjectManager:
@@ -343,8 +345,16 @@ class Player(pygame.sprite.Sprite):
         if self.ability_lib[self.SPEED_UP]:
             self.velocity_max = SPEED_UP_POWER
 
+        if self.ability_lib[self.HEALTH_UP]:
+            if self.health == self.max_health != HEALTH_UP_POWER:
+                self.health = HEALTH_UP_POWER
+            self.max_health = HEALTH_UP_POWER
+
     def lose_health(self):
-        self.health -= 1
+        if self.ability_lib[self.MISS] and random() <= MISS_CHANCE:
+            pass
+        else:
+            self.health -= 1
 
     def is_live(self):
         return self.health > 0
@@ -520,7 +530,7 @@ def main():
     objectManager.append(Block(objectManager.sprite_group, 200, 200, 400, 50), ObjectManager.BLOCK_KEY)  # center
 
     # area for player's abilities
-    #objectManager.player().add_ability(objectManager.player().SPEED_UP)
+    #objectManager.player().add_ability(objectManager.player().HEALTH_UP)
 
     spawnManager.generate_new_level(objectManager, objectManager.player())
 
