@@ -398,7 +398,9 @@ class Player(pygame.sprite.Sprite):
             self.max_health = HEALTH_UP_POWER
 
     def lose_health(self):
-        if self.ability_lib[self.MISS] and random() <= MISS_CHANCE:
+        if self.ability_lib[self.TURTLE] and self.velocity_x == 0 and self.velocity_y == 0:
+            pass
+        elif self.ability_lib[self.MISS] and random() <= MISS_CHANCE:
             pass
         else:
             self.health -= 1
