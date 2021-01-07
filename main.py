@@ -13,6 +13,7 @@ WINDOW_IS_OPEN = True
 
 FROZE_DURATION = 200
 FROZE_BOXES_CHANCE = 0.2
+SPEED_UP_POWER = 12
 
 
 class ObjectManager:
@@ -52,6 +53,9 @@ class ObjectManager:
     def get(self, key):
         return self.lib[key]
 
+    def player(self):
+        return self.lib[ObjectManager.PLAYER_KEY][0]
+
 
 class Block(pygame.sprite.Sprite):
     color = (170, 170, 170)
@@ -67,7 +71,7 @@ class Block(pygame.sprite.Sprite):
 
 class Box(pygame.sprite.Sprite):
     image = pygame.transform.scale(pygame.image.load("box.png"), (25, 20))
-    def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True):
+    def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True, apply_gravity=True):
         super().__init__(group)
 
         self.image = Box.image.copy()
@@ -83,6 +87,7 @@ class Box(pygame.sprite.Sprite):
         self.apply_velocity = apply_velocity
 
         self.is_frozen_box = is_frozen
+        self.apply_gravity = apply_gravity
 
         if self.is_frozen_box:
             self.image.fill((0, 0, 255))
@@ -100,7 +105,10 @@ class Box(pygame.sprite.Sprite):
                     self.rect.left = block.rect.right
                     self.velocity_x = abs(self.velocity_x) // 2
 
-            self.velocity_y += GRAVITY
+                self.apply_gravity = True
+
+            if self.apply_gravity:
+                self.velocity_y += GRAVITY
             self.rect.y += self.velocity_y
 
             block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
@@ -114,8 +122,13 @@ class Box(pygame.sprite.Sprite):
                     self.velocity_x = self.velocity_x // 2
                     self.velocity_y = self.velocity_x // 2
 
+                self.apply_gravity = True
+
             if abs(self.velocity_x) <= 2:
                 self.velocity_x = 0
+
+            if self.velocity_x == 0 and self.velocity_y == 0:
+                self.apply_gravity = True
 
     def set_velocity(self, x, y):
         self.velocity_x = x
@@ -299,6 +312,17 @@ class Player(pygame.sprite.Sprite):
                 v_x += 1
 
             self.holding_box.set_velocity(v_x * 20, v_y * 20 - 20)
+
+            if self.ability_lib[self.NOGRAV_THROW]:
+                if v_y == 0:
+                    self.holding_box.rect.y -= 30 # TODO: it can be super easy for player
+
+                self.holding_box.set_velocity(v_x * 20, v_y * 20)
+                self.holding_box.apply_gravity = False
+            else:
+                self.holding_box.set_velocity(v_x * 20, v_y * 20 - 20)
+                self.holding_box.apply_gravity = True
+
             self.holding_box.apply_velocity = True
             objectManager.get(ObjectManager.BOX_KEY).append(self.holding_box) # TODO: change strange line
             self.holding_box = None
@@ -306,6 +330,12 @@ class Player(pygame.sprite.Sprite):
         if self.rect.centerx < 0 or self.rect.centerx > WIDTH or self.rect.centery < 0 or self.rect.centery > HEIGHT:
             self.rect.centerx = WIDTH // 2
             self.rect.centery = HEIGHT // 2
+
+    def add_ability(self, key):
+        self.ability_lib[key] = True
+
+        if self.ability_lib[self.SPEED_UP]:
+            self.velocity_max = SPEED_UP_POWER
 
     def is_live(self):
         return self.health > 0
@@ -384,8 +414,8 @@ class Enemy(pygame.sprite.Sprite):
             self.time_to_shoot -= 1
     
     def shoot(self, objectManager: ObjectManager):
-        delta_x = objectManager.get(ObjectManager.PLAYER_KEY)[0].rect.centerx - self.rect.centerx
-        delta_y = objectManager.get(ObjectManager.PLAYER_KEY)[0].rect.centery - self.rect.centery
+        delta_x = objectManager.player().rect.centerx - self.rect.centerx
+        delta_y = objectManager.player().rect.centery - self.rect.centery
 
         k = sqrt(delta_x ** 2 + delta_y ** 2)
 
@@ -479,7 +509,10 @@ def main():
     objectManager.append(Block(objectManager.sprite_group, 750, 0, 50, 450), ObjectManager.BLOCK_KEY)  # right
     objectManager.append(Block(objectManager.sprite_group, 200, 200, 400, 50), ObjectManager.BLOCK_KEY)  # center
 
-    spawnManager.generate_new_level(objectManager, objectManager.get(ObjectManager.PLAYER_KEY)[0])
+    # area for player's abilities
+    #objectManager.player().add_ability(objectManager.player().SPEED_UP)
+
+    spawnManager.generate_new_level(objectManager, objectManager.player())
 
     ui = UI()
 
@@ -498,13 +531,13 @@ def main():
         objectManager.update()
         objectManager.draw(screen)
 
-        ui.update(objectManager.get(ObjectManager.PLAYER_KEY)[0])
+        ui.update(objectManager.player())
         ui.draw(screen)
 
         if objectManager.get(ObjectManager.ENEMY_KEY) == []:
-            spawnManager.generate_new_level(objectManager, objectManager.get(ObjectManager.PLAYER_KEY)[0])
+            spawnManager.generate_new_level(objectManager, objectManager.player())
 
-        if not(objectManager.get(ObjectManager.PLAYER_KEY)[0].is_live()):
+        if not(objectManager.player().is_live()):
             RUN = False
 
         pygame.display.flip()
