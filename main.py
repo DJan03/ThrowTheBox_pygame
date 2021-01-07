@@ -9,6 +9,8 @@ WIDTH, HEIGHT = 800, 600
 FPS = 60
 GRAVITY = 4
 
+WINDOW_IS_OPEN = True
+
 
 class ObjectManager:
     BLOCK_KEY = "block"
@@ -132,7 +134,7 @@ class Player(pygame.sprite.Sprite):
         self.velocity_y = 0
 
         self.velocity_a = 1
-        self.velocity_max = 10
+        self.velocity_max = 8
 
         self.impulse_x = 0
 
@@ -150,6 +152,9 @@ class Player(pygame.sprite.Sprite):
         self.ready_to_jump = False
 
         self.holding_box = None
+
+        self.health = 3
+        self.max_health = 3
 
     def control(self, event):
         if event.type == pygame.KEYDOWN:
@@ -265,6 +270,9 @@ class Player(pygame.sprite.Sprite):
             self.rect.centerx = WIDTH // 2
             self.rect.centery = HEIGHT // 2
 
+    def is_live(self):
+        return self.health > 0
+
 
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, group, x, y, velocity_x, velocity_y):
@@ -287,6 +295,12 @@ class Bullet(pygame.sprite.Sprite):
         block_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BLOCK_KEY))
         if block_hit is not None:
             objectManager.remove(self, ObjectManager.BULLET_KEY)
+
+        player_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.PLAYER_KEY))
+        if player_hit is not None:
+            player_hit.health -= 1
+            objectManager.remove(self, objectManager.BULLET_KEY)
+
 
 
 class Enemy(pygame.sprite.Sprite):
@@ -359,10 +373,40 @@ class SpawnManager:
             objectManager.append(Box(objectManager.sprite_group, x, y), ObjectManager.BOX_KEY)
 
 
-def main():
-    pygame.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+class UI:
+    bg_color = (39, 39, 39)
 
+    def __init__(self):
+        self.background = pygame.Surface((WIDTH, 150))
+        self.background.fill(UI.bg_color)
+
+        self.player_health = 3
+        self.max_player_health = 3
+
+        self.heart_full_img = pygame.transform.scale(pygame.image.load("heart_full.png"), (45, 35))
+        self.heart_empty_img = pygame.transform.scale(pygame.image.load("heart_empty.png"), (45, 35))
+
+        self.heart_full_rect = self.heart_full_img.get_rect()
+        self.heart_empty_rect = self.heart_empty_img.get_rect()
+
+        self.heart_full_rect.center = 22, 16
+        self.heart_empty_rect.center = 22, 16
+
+    def update(self, player: Player):
+        self.player_health = player.health
+        self.max_player_health = player.max_health
+
+    def draw(self, screen):
+        screen.blit(self.background, (0, HEIGHT - 150, WIDTH, 150))
+
+        for i in range(self.max_player_health):
+            if i < self.player_health:
+                screen.blit(self.heart_full_img, (WIDTH // 2 + i * 60 - 30 * self.max_player_health, HEIGHT - 140, 45, 35))
+            else:
+                screen.blit(self.heart_empty_img, (WIDTH // 2 + i * 60 - 30 * self.max_player_health, HEIGHT - 140, 45, 35))
+
+def main():
+    global WINDOW_IS_OPEN
     spawnManager = SpawnManager()
 
     objectManager = ObjectManager()
@@ -377,6 +421,8 @@ def main():
 
     spawnManager.generate_new_level(objectManager)
 
+    ui = UI()
+
     clock = pygame.time.Clock()
     RUN = True
 
@@ -384,6 +430,7 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 RUN = False
+                WINDOW_IS_OPEN = False
             objectManager.player_control(event)
 
         screen.fill((70, 70, 70))
@@ -391,13 +438,24 @@ def main():
         objectManager.update()
         objectManager.draw(screen)
 
+        ui.update(objectManager.get(ObjectManager.PLAYER_KEY)[0])
+        ui.draw(screen)
+
         if objectManager.get(ObjectManager.ENEMY_KEY) == []:
             spawnManager.generate_new_level(objectManager)
+
+        if not(objectManager.get(ObjectManager.PLAYER_KEY)[0].is_live()):
+            RUN = False
 
         pygame.display.flip()
         clock.tick(FPS)
 
 
 if __name__ == "__main__":
-    main()
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+
+    while WINDOW_IS_OPEN:
+        main()
+
     pygame.quit()
