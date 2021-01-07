@@ -1,7 +1,7 @@
 import pygame
 from typing import List, Dict
 from math import sqrt
-from random import shuffle
+from random import shuffle, random
 from copy import deepcopy
 
 
@@ -10,6 +10,9 @@ FPS = 60
 GRAVITY = 4
 
 WINDOW_IS_OPEN = True
+
+FROZE_DURATION = 200
+FROZE_BOXES_CHANCE = 0.2
 
 
 class ObjectManager:
@@ -63,10 +66,11 @@ class Block(pygame.sprite.Sprite):
 
 
 class Box(pygame.sprite.Sprite):
-    def __init__(self, group, x, y, apply_velocity=True, velocity_x=0, velocity_y=0):
+    image = pygame.transform.scale(pygame.image.load("box.png"), (25, 20))
+    def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True):
         super().__init__(group)
 
-        self.image = pygame.transform.scale(pygame.image.load("box.png"), (25, 20))
+        self.image = Box.image.copy()
         self.rect = self.image.get_rect()
         self.rect.center = self.rect.w // 2, self.rect.h // 2
         self.rect.centerx = x
@@ -77,6 +81,11 @@ class Box(pygame.sprite.Sprite):
         self.velocity_y = velocity_y
 
         self.apply_velocity = apply_velocity
+
+        self.is_frozen_box = is_frozen
+
+        if self.is_frozen_box:
+            self.image.fill((0, 0, 255))
 
     def update(self, objectManager: ObjectManager):
         if self.apply_velocity:
@@ -155,6 +164,34 @@ class Player(pygame.sprite.Sprite):
 
         self.health = 3
         self.max_health = 3
+
+        self.FROZEN_BOXES = "frozenbox"
+        self.NOGRAV_THROW = "nogravthrow"
+        self.SPEED_UP = "speedup"
+        self.MISS = "miss"
+        self.HEALTH_UP = "healthup"
+        self.HEART_BOXES = "heartboxes"
+        self.POWER_THROW = "powerthrow"
+        self.CURSED_BOXES = "cursedboxes"
+        self.TURTLE = "turtle"
+        self.CHOICE_UP = "choiceup"
+        self.MORE_BOXES = "boreboxes"
+        self.HIT_BOXES = "hitboxes"
+
+        self.ability_lib = {
+            self.FROZEN_BOXES: False,
+            self.NOGRAV_THROW: False,
+            self.SPEED_UP: False,
+            self.MISS: False,
+            self.HEALTH_UP: False,
+            self.HEART_BOXES: False,
+            self.POWER_THROW: False,
+            self.CURSED_BOXES: False,
+            self.TURTLE: False,
+            self.CHOICE_UP: False,
+            self.MORE_BOXES: False,
+            self.HIT_BOXES: False
+        }
 
     def control(self, event):
         if event.type == pygame.KEYDOWN:
@@ -302,11 +339,11 @@ class Bullet(pygame.sprite.Sprite):
             objectManager.remove(self, objectManager.BULLET_KEY)
 
 
-
 class Enemy(pygame.sprite.Sprite):
+    image = pygame.transform.scale(pygame.image.load("enemy.png"), (40, 40))
     def __init__(self, group, x, y, shoot_cooldown=50):
         super().__init__(group)
-        self.image = pygame.transform.scale(pygame.image.load("enemy.png"), (40, 40))
+        self.image = Enemy.image.copy()
 
         self.rect = self.image.get_rect()
         self.rect.center = 20, 20
@@ -322,6 +359,12 @@ class Enemy(pygame.sprite.Sprite):
         box_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BOX_KEY))
         if box_hit is not None:
             self.health -= 1
+
+            list_of_boxes = objectManager.get(ObjectManager.BOX_KEY)
+            box = list_of_boxes[list_of_boxes.index(box_hit)]
+            if box.is_frozen_box:
+                self.time_to_shoot = FROZE_DURATION
+
             objectManager.remove(box_hit, ObjectManager.BOX_KEY)
 
             if self.health <= 0:
@@ -332,6 +375,12 @@ class Enemy(pygame.sprite.Sprite):
             self.time_to_shoot = self.shoot_cooldown
             self.shoot(objectManager)
         else:
+            if self.time_to_shoot > self.shoot_cooldown:
+                self.image = Enemy.image.copy()
+                self.image.fill((0, 0, 255))
+            else:
+                self.image = Enemy.image.copy()
+
             self.time_to_shoot -= 1
     
     def shoot(self, objectManager: ObjectManager):
@@ -364,13 +413,19 @@ class SpawnManager:
         shuffle(points)
         return points[:count]
 
-    def generate_new_level(self, objectManager):
+    def generate_new_level(self, objectManager, player: Player):
         enemies_count = 1
         for x, y in self.get_points_for_enemies(enemies_count):
             objectManager.append(Enemy(objectManager.sprite_group, x, y), ObjectManager.ENEMY_KEY)
 
         for x, y in self.get_points_for_box(enemies_count * 2):
-            objectManager.append(Box(objectManager.sprite_group, x, y), ObjectManager.BOX_KEY)
+            if player.ability_lib[player.FROZEN_BOXES]:
+                if random() <= FROZE_BOXES_CHANCE:
+                    objectManager.append(Box(objectManager.sprite_group, x, y, is_frozen=True), ObjectManager.BOX_KEY)
+                else:
+                    objectManager.append(Box(objectManager.sprite_group, x, y), ObjectManager.BOX_KEY)
+            else:
+                objectManager.append(Box(objectManager.sprite_group, x, y), ObjectManager.BOX_KEY)
 
 
 class UI:
@@ -405,6 +460,11 @@ class UI:
             else:
                 screen.blit(self.heart_empty_img, (WIDTH // 2 + i * 60 - 30 * self.max_player_health, HEIGHT - 140, 45, 35))
 
+        #dark_screen = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        #dark_screen.fill(pygame.Color(0, 0, 0, 80))
+        #screen.blit(dark_screen, (0, 0))
+
+
 def main():
     global WINDOW_IS_OPEN
     spawnManager = SpawnManager()
@@ -419,7 +479,7 @@ def main():
     objectManager.append(Block(objectManager.sprite_group, 750, 0, 50, 450), ObjectManager.BLOCK_KEY)  # right
     objectManager.append(Block(objectManager.sprite_group, 200, 200, 400, 50), ObjectManager.BLOCK_KEY)  # center
 
-    spawnManager.generate_new_level(objectManager)
+    spawnManager.generate_new_level(objectManager, objectManager.get(ObjectManager.PLAYER_KEY)[0])
 
     ui = UI()
 
@@ -442,7 +502,7 @@ def main():
         ui.draw(screen)
 
         if objectManager.get(ObjectManager.ENEMY_KEY) == []:
-            spawnManager.generate_new_level(objectManager)
+            spawnManager.generate_new_level(objectManager, objectManager.get(ObjectManager.PLAYER_KEY)[0])
 
         if not(objectManager.get(ObjectManager.PLAYER_KEY)[0].is_live()):
             RUN = False
