@@ -16,7 +16,7 @@ FROZE_BOXES_CHANCE = 0.2
 SPEED_UP_POWER = 12
 MISS_CHANCE = 0.1
 HEALTH_UP_POWER = 4
-HEART_BOX_CHANCE = 1
+HEART_BOX_CHANCE = 0.75
 MORE_BOXES_MODIFY = 3
 
 
@@ -50,8 +50,11 @@ class ObjectManager:
         self.sprite_group.update(self)
 
     def remove(self, object, key):
-        self.sprite_group.remove(object)
-        self.lib[key].remove(object)
+        try:
+            self.sprite_group.remove(object)
+            self.lib[key].remove(object)
+        except ValueError:
+            pass
 
     def append(self, object, key):
         self.lib[key].append(object)
@@ -283,10 +286,14 @@ class Player(pygame.sprite.Sprite):
         if self.keys[self.LEFT] and self.keys[self.RIGHT]:
             self.velocity_x = 0
         elif self.keys[self.LEFT]:
+            if self.velocity_x > 0:
+                self.velocity_x = 0
             self.velocity_x -= self.velocity_a
             if self.velocity_x < -self.velocity_max:
                 self.velocity_x = -self.velocity_max
         elif self.keys[self.RIGHT]:
+            if self.velocity_x < 0:
+                self.velocity_x = 0
             self.velocity_x += self.velocity_a
             if self.velocity_x > self.velocity_max:
                 self.velocity_x = self.velocity_max
@@ -641,9 +648,10 @@ class ChoiceManager:
                 self.other_abilities.append(key)
 
     def get_new_ability(self, player):
-        ability = self.other_abilities.pop(randint(0, len(self.other_abilities) - 1))
-        player.add_ability(ability)
-        self.get_abilities.append(ability)
+        if len(self.other_abilities) > 0:
+            ability = self.other_abilities.pop(randint(0, len(self.other_abilities) - 1))
+            player.add_ability(ability)
+            self.get_abilities.append(ability)
 
     def get_images(self):
         return [self.img_lib[i] for i in self.get_abilities]
