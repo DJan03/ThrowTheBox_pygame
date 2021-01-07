@@ -533,7 +533,12 @@ class SpawnManager:
     def __init__(self):
         self.points_for_enemy = [(125, 125), (275, 125), (400, 125), (525, 125), (675, 125),
                                  (125, 325), (275, 325), (400, 325), (525, 325), (675, 325)]
-        self.points_for_box = [(275, 125), (400, 125), (525, 125), (125, 325), (275, 325), (400, 325), (525, 325), (675, 325)]
+        self.points_for_box = [(275, 175), (350, 175), (400, 175), (450, 175), (525, 175),
+                               (125, 375), (200, 375), (275, 375), (350, 375), (400, 375),
+                               (450, 375), (525, 375), (600, 375), (675, 375)]
+
+        self.level = 0
+        self.enemy_count_in_level = [1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5]
 
     def get_points_for_enemies(self, count):
         points = deepcopy(self.points_for_enemy)
@@ -546,7 +551,15 @@ class SpawnManager:
         return points[:count]
 
     def generate_new_level(self, objectManager, player: Player):
-        enemies_count = 1
+        if 0 <= self.level < len(self.enemy_count_in_level):
+            self.level += 1
+        else:
+            self.level = -1
+
+        print(self.level, self.enemy_count_in_level[self.level])
+
+        enemies_count = self.enemy_count_in_level[self.level]
+
         for x, y in self.get_points_for_enemies(enemies_count):
             objectManager.append(Enemy(objectManager.sprite_group, x, y), ObjectManager.ENEMY_KEY)
 
