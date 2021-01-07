@@ -17,6 +17,7 @@ SPEED_UP_POWER = 12
 MISS_CHANCE = 0.1
 HEALTH_UP_POWER = 4
 HEART_BOX_CHANCE = 1
+MORE_BOXES_MODIFY = 3
 
 
 class ObjectManager:
@@ -521,14 +522,18 @@ class SpawnManager:
             objectManager.append(Enemy(objectManager.sprite_group, x, y), ObjectManager.ENEMY_KEY)
 
         points = []
+        count_modify = 2
+
+        if player.ability_lib[player.MORE_BOXES]:
+            count_modify = MORE_BOXES_MODIFY
 
         if player.ability_lib[player.HEART_BOXES] and random() <= HEART_BOX_CHANCE:
-            poitns = self.get_points_for_box(enemies_count * 2 + 1)
+            poitns = self.get_points_for_box(enemies_count * count_modify + 1)
 
             x, y = poitns.pop(0)
             objectManager.append(Box(objectManager.sprite_group, x, y, is_heart_box=True), ObjectManager.BOX_KEY)
         else:
-            poitns = self.get_points_for_box(enemies_count * 2)
+            poitns = self.get_points_for_box(enemies_count * count_modify)
 
         for x, y in poitns:
             if player.ability_lib[player.FROZEN_BOXES]:
