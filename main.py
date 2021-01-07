@@ -86,10 +86,10 @@ class Block(pygame.sprite.Sprite):
 
 
 class Heart(pygame.sprite.Sprite):
+    image = pygame.transform.scale(pygame.image.load("data/heart.png"), (20, 20))
     def __init__(self, group, x, y):
         super().__init__(group)
-        self.image = pygame.Surface((20, 20))
-        self.image.fill((255, 125, 125))
+        self.image = Heart.image.copy()
 
         self.rect = self.image.get_rect()
         self.rect.center = 10, 10
@@ -114,6 +114,9 @@ class Heart(pygame.sprite.Sprite):
 
 class Box(pygame.sprite.Sprite):
     image = pygame.transform.scale(pygame.image.load("data/box.png"), (25, 20))
+    image_frozen = pygame.transform.scale(pygame.image.load("data/box_frozen.png"), (25, 20))
+    image_heart = pygame.transform.scale(pygame.image.load("data/box_heart.png"), (25, 20))
+
     def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True, apply_gravity=True, is_heart_box=False, is_bullet_box=False):
         super().__init__(group)
 
@@ -134,9 +137,9 @@ class Box(pygame.sprite.Sprite):
         self.is_bullet_box = is_bullet_box
 
         if self.is_frozen_box:
-            self.image.fill((0, 0, 255))
+            self.image = Box.image_frozen.copy()
         if self.is_heart_box:
-            self.image.fill((255, 0, 0))
+            self.image = Box.image_heart.copy()
         if self.is_bullet_box:
             self.image = pygame.transform.scale(Box.image.copy(), (12, 10))
             self.rect = self.image.get_rect()
@@ -470,6 +473,7 @@ class Bullet(pygame.sprite.Sprite):
 
 class Enemy(pygame.sprite.Sprite):
     image = pygame.transform.scale(pygame.image.load("data/enemy.png"), (40, 40))
+    image_frozen = pygame.transform.scale(pygame.image.load("data/enemy_frozen.png"), (40, 40))
     def __init__(self, group, x, y, shoot_cooldown=50):
         super().__init__(group)
         self.image = Enemy.image.copy()
@@ -508,8 +512,7 @@ class Enemy(pygame.sprite.Sprite):
             self.shoot(objectManager)
         else:
             if self.time_to_shoot > self.shoot_cooldown:
-                self.image = Enemy.image.copy()
-                self.image.fill((0, 0, 255))
+                self.image = Enemy.image_frozen.copy()
             else:
                 self.image = Enemy.image.copy()
 
@@ -555,8 +558,6 @@ class SpawnManager:
             self.level += 1
         else:
             self.level = -1
-
-        print(self.level, self.enemy_count_in_level[self.level])
 
         enemies_count = self.enemy_count_in_level[self.level]
 
