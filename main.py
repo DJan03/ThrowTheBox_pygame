@@ -110,7 +110,7 @@ class Heart(pygame.sprite.Sprite):
 
 class Box(pygame.sprite.Sprite):
     image = pygame.transform.scale(pygame.image.load("box.png"), (25, 20))
-    def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True, apply_gravity=True, is_heart_box=False):
+    def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True, apply_gravity=True, is_heart_box=False, is_bullet_box=False):
         super().__init__(group)
 
         self.image = Box.image.copy()
@@ -118,7 +118,6 @@ class Box(pygame.sprite.Sprite):
         self.rect.center = self.rect.w // 2, self.rect.h // 2
         self.rect.centerx = x
         self.rect.centery = y
-
 
         self.velocity_x = velocity_x
         self.velocity_y = velocity_y
@@ -128,11 +127,18 @@ class Box(pygame.sprite.Sprite):
         self.is_frozen_box = is_frozen
         self.apply_gravity = apply_gravity
         self.is_heart_box = is_heart_box
+        self.is_bullet_box = is_bullet_box
 
         if self.is_frozen_box:
             self.image.fill((0, 0, 255))
         if self.is_heart_box:
             self.image.fill((255, 0, 0))
+        if self.is_bullet_box:
+            self.image = pygame.transform.scale(Box.image.copy(), (12, 10))
+            self.rect = self.image.get_rect()
+            self.rect.center = self.rect.w // 2, self.rect.h // 2
+            self.rect.centerx = x
+            self.rect.centery = y
 
     def update(self, objectManager: ObjectManager):
         if self.apply_velocity:
@@ -153,7 +159,10 @@ class Box(pygame.sprite.Sprite):
                 get_hit = True
 
             if self.apply_gravity:
-                self.velocity_y += GRAVITY
+                if self.is_bullet_box:
+                    pass
+                else:
+                    self.velocity_y += GRAVITY
             self.rect.y += self.velocity_y
 
             block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
@@ -176,8 +185,12 @@ class Box(pygame.sprite.Sprite):
             if self.velocity_x == 0 and self.velocity_y == 0:
                 self.apply_gravity = True
 
-            if get_hit and self.is_heart_box:
-                objectManager.append(Heart(objectManager.sprite_group, self.rect.centerx, self.rect.centery), ObjectManager.HEART_KEY)
+            if get_hit:
+                if self.is_heart_box:
+                    objectManager.append(Heart(objectManager.sprite_group, self.rect.centerx, self.rect.centery), ObjectManager.HEART_KEY)
+                    objectManager.remove(self, ObjectManager.BOX_KEY)
+
+            if self.is_bullet_box and (get_hit or (self.velocity_x == 0 and self.velocity_y == 0)):
                 objectManager.remove(self, ObjectManager.BOX_KEY)
 
     def set_velocity(self, x, y):
@@ -337,7 +350,7 @@ class Player(pygame.sprite.Sprite):
         # boxes
         if self.holding_box is None and self.keys[self.HOLD]:
             box = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BOX_KEY))
-            if box != None:
+            if box != None and box.is_bullet_box == False:
                 self.holding_box = objectManager.get(ObjectManager.BOX_KEY).pop(objectManager.get(ObjectManager.BOX_KEY).index(box)) # TODO: fix this strange line
                 self.holding_box.apply_velocity = False
         if self.holding_box != None and self.keys[self.HOLD]:
@@ -396,13 +409,18 @@ class Player(pygame.sprite.Sprite):
                 self.health = HEALTH_UP_POWER
             self.max_health = HEALTH_UP_POWER
 
-    def lose_health(self):
+    def lose_health(self, objectManager):
         if self.ability_lib[self.TURTLE] and self.velocity_x == 0 and self.velocity_y == 0:
             pass
         elif self.ability_lib[self.MISS] and random() <= MISS_CHANCE:
             pass
         else:
             self.health -= 1
+
+            if self.ability_lib[self.HIT_BOXES]:
+                for x, y in [(-20, -20), (-20, 0), (-20, 20), (0, -20), (0, 20), (20, -20), (20, 0), (20, 20)]:
+                    objectManager.append(Box(objectManager.sprite_group, self.rect.centerx, self.rect.centery,
+                                             velocity_x=x, velocity_y=y, is_bullet_box=True), ObjectManager.BOX_KEY)
 
     def is_live(self):
         return self.health > 0
@@ -432,7 +450,7 @@ class Bullet(pygame.sprite.Sprite):
 
         player_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.PLAYER_KEY))
         if player_hit is not None:
-            objectManager.player().lose_health()
+            objectManager.player().lose_health(objectManager)
             objectManager.remove(self, objectManager.BULLET_KEY)
 
 
