@@ -1,7 +1,7 @@
 import pygame
 from typing import List, Dict
 from math import sqrt
-from random import shuffle, random, randint
+from random import shuffle, random, sample
 from copy import deepcopy
 
 
@@ -66,6 +66,7 @@ class ObjectManager:
         return self.lib[ObjectManager.PLAYER_KEY][0]
 
     def clear(self):
+        self.player().clear_movement()
         for i in [ObjectManager.BOX_KEY, ObjectManager.ENEMY_KEY, ObjectManager.BULLET_KEY, ObjectManager.HEART_KEY]:
             a = self.lib[i].copy()
             for j in a:
@@ -431,6 +432,13 @@ class Player(pygame.sprite.Sprite):
     def is_live(self):
         return self.health > 0
 
+    def clear_movement(self):
+        for key in self.keys:
+            self.keys[key] = False
+        self.velocity_x = 0
+        self.velocity_y = GRAVITY
+        self.impulse_x = 0
+
 
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, group, x, y, velocity_x, velocity_y):
@@ -538,7 +546,6 @@ class SpawnManager:
         return points[:count]
 
     def generate_new_level(self, objectManager, player: Player):
-        objectManager.clear()
         enemies_count = 1
         for x, y in self.get_points_for_enemies(enemies_count):
             objectManager.append(Enemy(objectManager.sprite_group, x, y), ObjectManager.ENEMY_KEY)
@@ -604,10 +611,6 @@ class UI:
             else:
                 screen.blit(self.heart_empty_img, (WIDTH // 2 + i * 60 - 30 * self.max_player_health, HEIGHT - 140, 45, 35))
 
-        #dark_screen = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-        #dark_screen.fill(pygame.Color(0, 0, 0, 80))
-        #screen.blit(dark_screen, (0, 0))
-
         for i, img in enumerate(self.cards):
             screen.blit(img, (WIDTH // 2 + 10 + i * 80 - 40 * len(self.cards), 500))
 
@@ -647,11 +650,69 @@ class ChoiceManager:
             else:
                 self.other_abilities.append(key)
 
-    def get_new_ability(self, player):
-        if len(self.other_abilities) > 0:
-            ability = self.other_abilities.pop(randint(0, len(self.other_abilities) - 1))
-            player.add_ability(ability)
-            self.get_abilities.append(ability)
+    def visualise_choice(self, screen, objectManager: ObjectManager, ui: UI):
+        global WINDOW_IS_OPEN
+        RUN = True
+        clock = pygame.time.Clock()
+
+        # create background picture
+        background = pygame.Surface((WIDTH, HEIGHT))
+        background.fill((70, 70, 70))
+        objectManager.draw(background)
+        ui.draw(background)
+
+        dark_screen = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+        dark_screen.fill(pygame.Color(0, 0, 0, 50))
+        background.blit(dark_screen, (0, 0))
+
+        count = 2
+
+        if objectManager.player().CHOICE_UP in self.get_abilities:
+            count = 3
+
+        if len(self.other_abilities) >= count:
+            cards = sample(self.other_abilities, count)
+
+            group = pygame.sprite.Group()
+
+            sprites = [pygame.sprite.Sprite(group) for _ in range(count)]
+
+            for i in range(count):
+                sprites[i].image = pygame.transform.scale(self.img_lib[cards[i]], (70 * 2, 90 * 2))
+                sprites[i].rect = sprites[i].image.get_rect()
+                sprites[i].rect.x = WIDTH // 2 + i * 160 - 80 * count
+                sprites[i].rect.y = 200
+
+            while RUN and WINDOW_IS_OPEN:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        RUN = False
+                        WINDOW_IS_OPEN = False
+                    if event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == 1:
+                            x, y = event.pos
+
+                            collide_id = -1
+
+                            for i in range(count):
+                                if sprites[i].rect.collidepoint(x, y):
+                                    collide_id = i
+                                    break
+
+                            if collide_id != -1:
+                                self.other_abilities.remove(cards[collide_id])
+                                objectManager.player().add_ability(cards[collide_id])
+                                self.get_abilities.append(cards[collide_id])
+                                RUN = False
+
+                screen.fill((0, 0, 0))
+
+                screen.blit(background, (0, 0))
+
+                group.draw(screen)
+
+                pygame.display.flip()
+                clock.tick(FPS)
 
     def get_images(self):
         return [self.img_lib[i] for i in self.get_abilities]
@@ -671,18 +732,6 @@ def main():
     objectManager.append(Block(objectManager.sprite_group, 750, 0, 50, 450), ObjectManager.BLOCK_KEY)  # right
     objectManager.append(Block(objectManager.sprite_group, 200, 200, 400, 50), ObjectManager.BLOCK_KEY)  # center
 
-    # area for player's abilities
-    #objectManager.player().add_ability(objectManager.player().FROZEN_BOXES)
-    #objectManager.player().add_ability(objectManager.player().NOGRAV_THROW)
-    #objectManager.player().add_ability(objectManager.player().SPEED_UP)
-    #objectManager.player().add_ability(objectManager.player().MISS)
-    #objectManager.player().add_ability(objectManager.player().HEALTH_UP)
-    #objectManager.player().add_ability(objectManager.player().HEART_BOXES)
-    #objectManager.player().add_ability(objectManager.player().TURTLE)
-    #objectManager.player().add_ability(objectManager.player().CHOICE_UP)
-    #objectManager.player().add_ability(objectManager.player().MORE_BOXES)
-    #objectManager.player().add_ability(objectManager.player().HIT_BOXES)
-
     spawnManager.generate_new_level(objectManager, objectManager.player())
 
     ui = UI()
@@ -692,7 +741,7 @@ def main():
     clock = pygame.time.Clock()
     RUN = True
 
-    while RUN:
+    while RUN and WINDOW_IS_OPEN:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 RUN = False
@@ -708,7 +757,10 @@ def main():
         ui.draw(screen)
 
         if objectManager.get(ObjectManager.ENEMY_KEY) == []:
-            choiceManager.get_new_ability(objectManager.player())
+            objectManager.clear()
+
+            choiceManager.visualise_choice(screen, objectManager, ui)
+
             ui.set_cards(choiceManager.get_images())
             spawnManager.generate_new_level(objectManager, objectManager.player())
 
