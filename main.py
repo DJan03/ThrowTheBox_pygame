@@ -234,7 +234,6 @@ class Player(pygame.sprite.Sprite):
         self.MISS = "miss"
         self.HEALTH_UP = "healthup"
         self.HEART_BOXES = "heartboxes"
-        self.CURSED_BOXES = "cursedboxes"
         self.TURTLE = "turtle"
         self.CHOICE_UP = "choiceup"
         self.MORE_BOXES = "boreboxes"
@@ -247,7 +246,6 @@ class Player(pygame.sprite.Sprite):
             self.MISS: False,
             self.HEALTH_UP: False,
             self.HEART_BOXES: False,
-            self.CURSED_BOXES: False,
             self.TURTLE: False,
             self.CHOICE_UP: False,
             self.MORE_BOXES: False,
@@ -603,7 +601,6 @@ def main():
     #objectManager.player().add_ability(objectManager.player().MISS)
     #objectManager.player().add_ability(objectManager.player().HEALTH_UP)
     #objectManager.player().add_ability(objectManager.player().HEART_BOXES)
-    #objectManager.player().add_ability(objectManager.player().CURSED_BOXES)
     #objectManager.player().add_ability(objectManager.player().TURTLE)
     #objectManager.player().add_ability(objectManager.player().CHOICE_UP)
     #objectManager.player().add_ability(objectManager.player().MORE_BOXES)
