@@ -16,6 +16,7 @@ FROZE_BOXES_CHANCE = 0.2
 SPEED_UP_POWER = 12
 MISS_CHANCE = 0.1
 HEALTH_UP_POWER = 4
+HEART_BOX_CHANCE = 1
 
 
 class ObjectManager:
@@ -24,6 +25,7 @@ class ObjectManager:
     PLAYER_KEY = "player"
     ENEMY_KEY = "enemy"
     BULLET_KEY = "bullet"
+    HEART_KEY = "heart"
 
     def __init__(self):
         self.sprite_group = pygame.sprite.Group()
@@ -33,7 +35,8 @@ class ObjectManager:
                     ObjectManager.BOX_KEY,
                     ObjectManager.PLAYER_KEY,
                     ObjectManager.ENEMY_KEY,
-                    ObjectManager.BULLET_KEY]:
+                    ObjectManager.BULLET_KEY,
+                    ObjectManager.HEART_KEY]:
             self.lib[key] = []
 
     def player_control(self, event):
@@ -59,7 +62,7 @@ class ObjectManager:
         return self.lib[ObjectManager.PLAYER_KEY][0]
 
     def clear(self):
-        for i in [ObjectManager.BOX_KEY, ObjectManager.ENEMY_KEY, ObjectManager.BULLET_KEY]:
+        for i in [ObjectManager.BOX_KEY, ObjectManager.ENEMY_KEY, ObjectManager.BULLET_KEY, ObjectManager.HEART_KEY]:
             a = self.lib[i].copy()
             for j in a:
                 self.remove(j, i)
@@ -77,9 +80,36 @@ class Block(pygame.sprite.Sprite):
         self.rect.y = y
 
 
+class Heart(pygame.sprite.Sprite):
+    def __init__(self, group, x, y):
+        super().__init__(group)
+        self.image = pygame.Surface((20, 20))
+        self.image.fill((255, 125, 125))
+
+        self.rect = self.image.get_rect()
+        self.rect.center = 10, 10
+        self.rect.centerx = x
+        self.rect.centery = y
+
+        self.velocity_y = 0
+
+    def update(self, objectManager: ObjectManager):
+        self.velocity_y += GRAVITY
+        self.rect.y += self.velocity_y
+
+        block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
+        for block in block_hit_list:
+            if self.velocity_y > 0:
+                self.rect.bottom = block.rect.top
+                self.velocity_y = 0
+            elif self.velocity_y < 0:
+                self.rect.top = block.rect.bottom
+                self.velocity_y = 0
+
+
 class Box(pygame.sprite.Sprite):
     image = pygame.transform.scale(pygame.image.load("box.png"), (25, 20))
-    def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True, apply_gravity=True):
+    def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True, apply_gravity=True, is_heart_box=False):
         super().__init__(group)
 
         self.image = Box.image.copy()
@@ -96,13 +126,18 @@ class Box(pygame.sprite.Sprite):
 
         self.is_frozen_box = is_frozen
         self.apply_gravity = apply_gravity
+        self.is_heart_box = is_heart_box
 
         if self.is_frozen_box:
             self.image.fill((0, 0, 255))
+        if self.is_heart_box:
+            self.image.fill((255, 0, 0))
 
     def update(self, objectManager: ObjectManager):
         if self.apply_velocity:
             self.rect.x += self.velocity_x
+
+            get_hit = False
 
             block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
             for block in block_hit_list:
@@ -114,6 +149,7 @@ class Box(pygame.sprite.Sprite):
                     self.velocity_x = abs(self.velocity_x) // 2
 
                 self.apply_gravity = True
+                get_hit = True
 
             if self.apply_gravity:
                 self.velocity_y += GRAVITY
@@ -129,6 +165,7 @@ class Box(pygame.sprite.Sprite):
                     self.rect.top = block.rect.bottom
                     self.velocity_x = self.velocity_x // 2
                     self.velocity_y = self.velocity_x // 2
+                    get_hit = True
 
                 self.apply_gravity = True
 
@@ -137,6 +174,10 @@ class Box(pygame.sprite.Sprite):
 
             if self.velocity_x == 0 and self.velocity_y == 0:
                 self.apply_gravity = True
+
+            if get_hit and self.is_heart_box:
+                objectManager.append(Heart(objectManager.sprite_group, self.rect.centerx, self.rect.centery), ObjectManager.HEART_KEY)
+                objectManager.remove(self, ObjectManager.BOX_KEY)
 
     def set_velocity(self, x, y):
         self.velocity_x = x
@@ -335,6 +376,14 @@ class Player(pygame.sprite.Sprite):
             objectManager.get(ObjectManager.BOX_KEY).append(self.holding_box) # TODO: change strange line
             self.holding_box = None
 
+        # hearts
+        heart_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.HEART_KEY))
+        if heart_hit is not None:
+            if self.health < self.max_health:
+                self.health += 1
+                objectManager.remove(heart_hit, ObjectManager.HEART_KEY)
+
+        # bug
         if self.rect.centerx < 0 or self.rect.centerx > WIDTH or self.rect.centery < 0 or self.rect.centery > HEIGHT:
             self.rect.centerx = WIDTH // 2
             self.rect.centery = HEIGHT // 2
@@ -407,10 +456,13 @@ class Enemy(pygame.sprite.Sprite):
     def update(self, objectManager: ObjectManager):
         box_hit = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BOX_KEY))
         if box_hit is not None:
-            self.health -= 1
-
             list_of_boxes = objectManager.get(ObjectManager.BOX_KEY)
             box = list_of_boxes[list_of_boxes.index(box_hit)]
+            if box.is_heart_box:
+                return
+
+            self.health -= 1
+
             if box.is_frozen_box:
                 self.time_to_shoot = FROZE_DURATION
 
@@ -468,7 +520,17 @@ class SpawnManager:
         for x, y in self.get_points_for_enemies(enemies_count):
             objectManager.append(Enemy(objectManager.sprite_group, x, y), ObjectManager.ENEMY_KEY)
 
-        for x, y in self.get_points_for_box(enemies_count * 2):
+        points = []
+
+        if player.ability_lib[player.HEART_BOXES] and random() <= HEART_BOX_CHANCE:
+            poitns = self.get_points_for_box(enemies_count * 2 + 1)
+
+            x, y = poitns.pop(0)
+            objectManager.append(Box(objectManager.sprite_group, x, y, is_heart_box=True), ObjectManager.BOX_KEY)
+        else:
+            poitns = self.get_points_for_box(enemies_count * 2)
+
+        for x, y in poitns:
             if player.ability_lib[player.FROZEN_BOXES]:
                 if random() <= FROZE_BOXES_CHANCE:
                     objectManager.append(Box(objectManager.sprite_group, x, y, is_frozen=True), ObjectManager.BOX_KEY)
