@@ -1,7 +1,7 @@
 import pygame
 from typing import List, Dict
 from math import sqrt
-from random import shuffle, random
+from random import shuffle, random, randint
 from copy import deepcopy
 
 
@@ -405,8 +405,7 @@ class Player(pygame.sprite.Sprite):
             self.velocity_max = SPEED_UP_POWER
 
         if self.ability_lib[self.HEALTH_UP]:
-            if self.health == self.max_health != HEALTH_UP_POWER:
-                self.health = HEALTH_UP_POWER
+            self.health += HEALTH_UP_POWER - self.max_health
             self.max_health = HEALTH_UP_POWER
 
     def lose_health(self, objectManager):
@@ -580,8 +579,10 @@ class UI:
         self.heart_full_rect.center = 22, 16
         self.heart_empty_rect.center = 22, 16
 
-        self.card_img = pygame.Surface((70, 90))
-        self.card_img.fill((255, 255, 255))
+        self.cards = []
+
+    def set_cards(self, cards: List[pygame.Surface]):
+        self.cards = cards.copy()
 
     def update(self, player: Player):
         self.player_health = player.health
@@ -600,8 +601,52 @@ class UI:
         #dark_screen.fill(pygame.Color(0, 0, 0, 80))
         #screen.blit(dark_screen, (0, 0))
 
-        for i in range(10):
-            screen.blit(self.card_img, (5 + i * 80, 500))
+        for i, img in enumerate(self.cards):
+            screen.blit(img, (WIDTH // 2 + 10 + i * 80 - 40 * len(self.cards), 500))
+
+
+class ChoiceManager:
+    img_choice_up = pygame.image.load("data/card_choice_up.png")
+    img_frozen_box = pygame.image.load("data/card_frozen_box.png")
+    img_health_up = pygame.image.load("data/card_health_up.png")
+    img_heart_boxes = pygame.image.load("data/card_heart_boxes.png")
+    img_hit_boxes = pygame.image.load("data/card_hit_boxes.png")
+    img_miss = pygame.image.load("data/card_miss.png")
+    img_more_boxes = pygame.image.load("data/card_more_boxes.png")
+    img_nograv_throw = pygame.image.load("data/card_nograv_throw.png")
+    img_speed_up = pygame.image.load("data/card_speed_up.png")
+    img_turtle = pygame.image.load("data/card_turtle.png")
+
+    def __init__(self, player: Player):
+        self.img_lib = {
+            player.CHOICE_UP: ChoiceManager.img_choice_up,
+            player.FROZEN_BOXES: ChoiceManager.img_frozen_box,
+            player.HEALTH_UP: ChoiceManager.img_health_up,
+            player.HEART_BOXES: ChoiceManager.img_heart_boxes,
+            player.HIT_BOXES: ChoiceManager.img_hit_boxes,
+            player.MISS: ChoiceManager.img_miss,
+            player.MORE_BOXES: ChoiceManager.img_more_boxes,
+            player.NOGRAV_THROW: ChoiceManager.img_nograv_throw,
+            player.SPEED_UP: ChoiceManager.img_speed_up,
+            player.TURTLE: ChoiceManager.img_turtle
+        }
+
+        self.get_abilities = []
+        self.other_abilities = []
+
+        for key in player.ability_lib.keys():
+            if player.ability_lib[key]:
+                self.get_abilities.append(key)
+            else:
+                self.other_abilities.append(key)
+
+    def get_new_ability(self, player):
+        ability = self.other_abilities.pop(randint(0, len(self.other_abilities) - 1))
+        player.add_ability(ability)
+        self.get_abilities.append(ability)
+
+    def get_images(self):
+        return [self.img_lib[i] for i in self.get_abilities]
 
 
 def main():
@@ -634,6 +679,8 @@ def main():
 
     ui = UI()
 
+    choiceManager = ChoiceManager(objectManager.player())
+
     clock = pygame.time.Clock()
     RUN = True
 
@@ -653,6 +700,8 @@ def main():
         ui.draw(screen)
 
         if objectManager.get(ObjectManager.ENEMY_KEY) == []:
+            choiceManager.get_new_ability(objectManager.player())
+            ui.set_cards(choiceManager.get_images())
             spawnManager.generate_new_level(objectManager, objectManager.player())
 
         if not(objectManager.player().is_live()):
