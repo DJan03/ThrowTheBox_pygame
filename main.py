@@ -474,7 +474,7 @@ class Bullet(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     image = pygame.transform.scale(pygame.image.load("data/enemy.png"), (40, 40))
     image_frozen = pygame.transform.scale(pygame.image.load("data/enemy_frozen.png"), (40, 40))
-    def __init__(self, group, x, y, shoot_cooldown=50):
+    def __init__(self, group, x, y, shoot_cooldown=100):
         super().__init__(group)
         self.image = Enemy.image.copy()
 
@@ -541,7 +541,7 @@ class SpawnManager:
                                (450, 375), (525, 375), (600, 375), (675, 375)]
 
         self.level = 0
-        self.enemy_count_in_level = [1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5]
+        self.enemy_count_in_level = [0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5]
 
     def get_points_for_enemies(self, count):
         points = deepcopy(self.points_for_enemy)
@@ -554,7 +554,7 @@ class SpawnManager:
         return points[:count]
 
     def generate_new_level(self, objectManager, player: Player):
-        if 0 <= self.level < len(self.enemy_count_in_level):
+        if 0 <= self.level < len(self.enemy_count_in_level) - 1:
             self.level += 1
         else:
             self.level = -1
