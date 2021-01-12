@@ -1,7 +1,7 @@
 import pygame
 from typing import List, Dict
 from math import sqrt
-from random import shuffle, random, sample
+from random import shuffle, random, sample, randint
 from copy import deepcopy
 
 
@@ -19,6 +19,13 @@ HEALTH_UP_POWER = 4
 HEART_BOX_CHANCE = 0.75
 MORE_BOXES_MODIFY = 3
 
+BACKGROUND = pygame.Surface((WIDTH, HEIGHT))
+tile = pygame.transform.scale(pygame.image.load("data/bg.png"), (50, 50))
+
+for i in range(WIDTH // 50 + 1):
+    for j in range(HEIGHT // 50 + 1):
+        BACKGROUND.blit(tile, (i * 50, j * 50))
+
 
 class ObjectManager:
     BLOCK_KEY = "block"
@@ -27,6 +34,7 @@ class ObjectManager:
     ENEMY_KEY = "enemy"
     BULLET_KEY = "bullet"
     HEART_KEY = "heart"
+    PARTICLE_KEY = "particle"
 
     def __init__(self):
         self.sprite_group = pygame.sprite.Group()
@@ -37,29 +45,34 @@ class ObjectManager:
                     ObjectManager.PLAYER_KEY,
                     ObjectManager.ENEMY_KEY,
                     ObjectManager.BULLET_KEY,
-                    ObjectManager.HEART_KEY]:
+                    ObjectManager.HEART_KEY,
+                    ObjectManager.PARTICLE_KEY]:
             self.lib[key] = []
 
-    def player_control(self, event):
+    def player_control(self, event: pygame.event.Event):
         self.lib[ObjectManager.PLAYER_KEY][0].control(event)
 
-    def draw(self, screen):
+    def draw(self, screen: pygame.Surface):
         self.sprite_group.draw(screen)
 
     def update(self):
         self.sprite_group.update(self)
 
-    def remove(self, object, key):
+    def add_particles(self, x, y, velocity_x, velocity_y, count):
+        for i in range(count):
+            self.append(Particle(self.sprite_group, x, y, velocity_x, velocity_y), ObjectManager.PARTICLE_KEY)
+
+    def remove(self, object: pygame.sprite.Sprite, key: str):
         try:
             self.sprite_group.remove(object)
             self.lib[key].remove(object)
         except ValueError:
             pass
 
-    def append(self, object, key):
+    def append(self, object: pygame.sprite.Sprite, key: str):
         self.lib[key].append(object)
 
-    def get(self, key):
+    def get(self, key: str):
         return self.lib[key]
 
     def player(self):
@@ -73,13 +86,67 @@ class ObjectManager:
                 self.remove(j, i)
 
 
-class Block(pygame.sprite.Sprite):
-    color = (170, 170, 170)
+class Particle(pygame.sprite.Sprite):
+    color = (255, 255, 255)
 
-    def __init__(self, group, x, y, w, h):
+    def __init__(self, group, x, y, velocity_x, velocity_y):
         super().__init__(group)
-        self.image = pygame.Surface((w, h))
-        self.image.fill(Block.color)
+
+        self.image = pygame.Surface((10, 10))
+        self.image.fill(Particle.color)
+        self.rect = self.image.get_rect()
+        self.rect.center = (5, 5)
+        self.rect.centerx = x
+        self.rect.centery = y
+
+        self.velocity_x = velocity_x * (random() + 0.5)
+        self.velocity_y = velocity_y * (random() + 0.5)
+
+        self.life_time = 5
+
+    def update(self, objectManager: ObjectManager):
+        self.rect.centerx += self.velocity_x
+
+        block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
+        for block in block_hit_list:
+            if self.velocity_x > 0:
+                self.rect.right = block.rect.left
+                self.velocity_x = -abs(self.velocity_x) // 2
+            elif self.velocity_x < 0:
+                self.rect.left = block.rect.right
+                self.velocity_x = abs(self.velocity_x) // 2
+
+        self.velocity_y += GRAVITY
+        self.rect.centery += self.velocity_y
+
+        block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
+        for block in block_hit_list:
+            if self.velocity_y > 0:
+                self.rect.bottom = block.rect.top
+                self.velocity_x = self.velocity_x // 3
+                self.velocity_y = -abs(self.velocity_x) // 3
+            elif self.velocity_y < 0:
+                self.rect.top = block.rect.bottom
+                self.velocity_x = self.velocity_x // 3
+                self.velocity_y = self.velocity_x // 3
+
+        if self.life_time > 0:
+            self.life_time -= 1
+        else:
+            objectManager.remove(self, ObjectManager.PARTICLE_KEY)
+
+
+class Block(pygame.sprite.Sprite):
+    image = pygame.transform.scale(pygame.image.load("data/wall.png"), (50, 50))
+
+    def __init__(self, group: pygame.sprite.Group, x: int, y: int, w: int, h: int):
+        super().__init__(group)
+        self.image = pygame.Surface((w, h), pygame.SRCALPHA)
+
+        for i in range(w // 50 + 1):
+            for j in range(h // 50 + 1):
+                self.image.blit(Block.image, (i * 50, j * 50))
+
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
@@ -87,7 +154,8 @@ class Block(pygame.sprite.Sprite):
 
 class Heart(pygame.sprite.Sprite):
     image = pygame.transform.scale(pygame.image.load("data/heart.png"), (20, 20))
-    def __init__(self, group, x, y):
+
+    def __init__(self, group: pygame.sprite.Group, x: int, y: int):
         super().__init__(group)
         self.image = Heart.image.copy()
 
@@ -206,6 +274,9 @@ class Box(pygame.sprite.Sprite):
 
 
 class Player(pygame.sprite.Sprite):
+    image_right = pygame.transform.scale(pygame.image.load("data/hero.png"), (40, 40))
+    image_left = pygame.transform.flip(pygame.transform.scale(pygame.image.load("data/hero.png"), (40, 40)), True, False)
+
     def __init__(self, group: pygame.sprite.Group,
                  left=pygame.K_LEFT,
                  right=pygame.K_RIGHT,
@@ -215,7 +286,7 @@ class Player(pygame.sprite.Sprite):
                  hold=pygame.K_x):
         super().__init__(group)
 
-        self.image = pygame.transform.scale(pygame.image.load("data/hero.png"), (40, 40))
+        self.image = Player.image_right
 
         self.rect = self.image.get_rect()
         self.rect.center = 20, 20
@@ -304,7 +375,10 @@ class Player(pygame.sprite.Sprite):
         else:
             self.velocity_x = 0
 
+        jumped = False
+
         if self.keys[self.JUMP] and self.ready_to_jump:
+            jumped = True
             self.keys[self.JUMP] = False
             self.ready_to_jump = False
             self.velocity_y = -40
@@ -317,6 +391,8 @@ class Player(pygame.sprite.Sprite):
 
         # apply velocity
         self.rect.centerx += self.velocity_x + self.impulse_x
+
+        on_wall = False
 
         block_hit_list = pygame.sprite.spritecollide(self, objectManager.get(ObjectManager.BLOCK_KEY), False)
         for block in block_hit_list:
@@ -344,6 +420,8 @@ class Player(pygame.sprite.Sprite):
                         self.keys[self.JUMP] = False
                         self.impulse_x = 20
                         self.velocity_y = -30
+
+            on_wall = True
 
         self.velocity_y += GRAVITY
         self.rect.centery += self.velocity_y
@@ -403,6 +481,31 @@ class Player(pygame.sprite.Sprite):
             if self.health < self.max_health:
                 self.health += 1
                 objectManager.remove(heart_hit, ObjectManager.HEART_KEY)
+
+        # animation
+        if self.velocity_x > 0:
+            self.image = Player.image_right
+        elif self.velocity_x < 0:
+            self.image = Player.image_left
+
+        # particles
+        # steps
+        if self.velocity_y == 0 and random() < 0.3:
+            if self.velocity_x > 0:
+                objectManager.add_particles(self.rect.centerx, self.rect.centery + 10, -5, -3, 1)
+            elif self.velocity_x < 0:
+                objectManager.add_particles(self.rect.centerx, self.rect.centery + 10, 5, -3, 1)
+        # wall
+        if on_wall and random() < 0.6:
+            if self.velocity_x > 0:
+                objectManager.add_particles(self.rect.right - 5, self.rect.bottom, -3, 5, 1)
+            elif self.velocity_x < 0:
+                objectManager.add_particles(self.rect.left + 5, self.rect.bottom, 3, 5, 1)
+
+        # jump
+        if jumped:
+            objectManager.add_particles(self.rect.centerx, self.rect.bottom - 5, 5, -10, 2)
+            objectManager.add_particles(self.rect.centerx, self.rect.bottom - 5, -5, -10, 2)
 
         # bug
         if self.rect.centerx < 0 or self.rect.centerx > WIDTH or self.rect.centery < 0 or self.rect.centery > HEIGHT:
@@ -485,7 +588,7 @@ class Enemy(pygame.sprite.Sprite):
 
         self.health = 2
         
-        self.time_to_shoot = shoot_cooldown
+        self.time_to_shoot = randint(shoot_cooldown // 2, shoot_cooldown)
         self.shoot_cooldown = shoot_cooldown
 
     def update(self, objectManager: ObjectManager):
@@ -671,7 +774,8 @@ class ChoiceManager:
 
         # create background picture
         background = pygame.Surface((WIDTH, HEIGHT))
-        background.fill((70, 70, 70))
+        background.fill((0, 0, 0))
+        background.blit(BACKGROUND, (0, 0))
         objectManager.draw(background)
         ui.draw(background)
 
@@ -702,6 +806,18 @@ class ChoiceManager:
                     if event.type == pygame.QUIT:
                         RUN = False
                         WINDOW_IS_OPEN = False
+                    if event.type == pygame.MOUSEMOTION:
+                        x, y = event.pos
+
+                        for i in range(count):
+                            if sprites[i].rect.collidepoint(x, y):
+                                sprites[i].rect.y = 160
+                            else:
+                                if sprites[i].rect.collidepoint(x, y - 40):
+                                    continue
+                                else:
+                                    sprites[i].rect.y = 200
+
                     if event.type == pygame.MOUSEBUTTONDOWN:
                         if event.button == 1:
                             x, y = event.pos
@@ -709,7 +825,7 @@ class ChoiceManager:
                             collide_id = -1
 
                             for i in range(count):
-                                if sprites[i].rect.collidepoint(x, y):
+                                if sprites[i].rect.collidepoint(x, y) or (sprites[i].rect.collidepoint(x, y - 40) and sprites[i].rect.y == 160): #####
                                     collide_id = i
                                     break
 
@@ -739,6 +855,7 @@ def main():
     objectManager = ObjectManager()
 
     objectManager.append(Player(objectManager.sprite_group), ObjectManager.PLAYER_KEY)
+    # objectManager.append(Player(objectManager.sprite_group, left=pygame.K_a, right=pygame.K_d, up=pygame.K_w, down=pygame.K_s, jump=pygame.K_w, hold=pygame.K_SPACE), ObjectManager.PLAYER_KEY)
 
     objectManager.append(Block(objectManager.sprite_group, 0, 0, WIDTH, 50), ObjectManager.BLOCK_KEY)  # top
     objectManager.append(Block(objectManager.sprite_group, 0, 400, WIDTH, 50), ObjectManager.BLOCK_KEY)  # bot
@@ -762,7 +879,8 @@ def main():
                 WINDOW_IS_OPEN = False
             objectManager.player_control(event)
 
-        screen.fill((70, 70, 70))
+        screen.fill((0, 0, 0))
+        screen.blit(BACKGROUND, (0, 0))
 
         objectManager.update()
         objectManager.draw(screen)
