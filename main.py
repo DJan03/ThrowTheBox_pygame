@@ -4,7 +4,6 @@ from math import sqrt
 from random import shuffle, random, sample, randint
 from copy import deepcopy
 
-
 WIDTH, HEIGHT = 800, 600
 FPS = 60
 GRAVITY = 4
@@ -185,7 +184,8 @@ class Box(pygame.sprite.Sprite):
     image_frozen = pygame.transform.scale(pygame.image.load("data/box_frozen.png"), (25, 20))
     image_heart = pygame.transform.scale(pygame.image.load("data/box_heart.png"), (25, 20))
 
-    def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True, apply_gravity=True, is_heart_box=False, is_bullet_box=False):
+    def __init__(self, group, x, y, velocity_x=0, velocity_y=0, is_frozen=False, apply_velocity=True,
+                 apply_gravity=True, is_heart_box=False, is_bullet_box=False):
         super().__init__(group)
 
         self.image = Box.image.copy()
@@ -209,7 +209,7 @@ class Box(pygame.sprite.Sprite):
         if self.is_heart_box:
             self.image = Box.image_heart.copy()
         if self.is_bullet_box:
-            self.image = pygame.transform.scale(Box.image.copy(), (12, 10))
+            self.image = pygame.transform.scale(Box.image.copy(), (20, 16))
             self.rect = self.image.get_rect()
             self.rect.center = self.rect.w // 2, self.rect.h // 2
             self.rect.centerx = x
@@ -262,7 +262,8 @@ class Box(pygame.sprite.Sprite):
 
             if get_hit:
                 if self.is_heart_box:
-                    objectManager.append(Heart(objectManager.sprite_group, self.rect.centerx, self.rect.centery), ObjectManager.HEART_KEY)
+                    objectManager.append(Heart(objectManager.sprite_group, self.rect.centerx, self.rect.centery),
+                                         ObjectManager.HEART_KEY)
                     objectManager.remove(self, ObjectManager.BOX_KEY)
 
             if self.is_bullet_box and (get_hit or (self.velocity_x == 0 and self.velocity_y == 0)):
@@ -275,7 +276,8 @@ class Box(pygame.sprite.Sprite):
 
 class Player(pygame.sprite.Sprite):
     image_right = pygame.transform.scale(pygame.image.load("data/hero.png"), (40, 40))
-    image_left = pygame.transform.flip(pygame.transform.scale(pygame.image.load("data/hero.png"), (40, 40)), True, False)
+    image_left = pygame.transform.flip(pygame.transform.scale(pygame.image.load("data/hero.png"), (40, 40)), True,
+                                       False)
 
     def __init__(self, group: pygame.sprite.Group,
                  left=pygame.K_LEFT,
@@ -440,7 +442,8 @@ class Player(pygame.sprite.Sprite):
         if self.holding_box is None and self.keys[self.HOLD]:
             box = pygame.sprite.spritecollideany(self, objectManager.get(ObjectManager.BOX_KEY))
             if box != None and box.is_bullet_box == False:
-                self.holding_box = objectManager.get(ObjectManager.BOX_KEY).pop(objectManager.get(ObjectManager.BOX_KEY).index(box)) # TODO: fix this strange line
+                self.holding_box = objectManager.get(ObjectManager.BOX_KEY).pop(
+                    objectManager.get(ObjectManager.BOX_KEY).index(box))
                 self.holding_box.apply_velocity = False
         if self.holding_box != None and self.keys[self.HOLD]:
             self.holding_box.rect.centerx = self.rect.centerx
@@ -463,7 +466,7 @@ class Player(pygame.sprite.Sprite):
 
             if self.ability_lib[self.NOGRAV_THROW]:
                 if v_y == 0:
-                    self.holding_box.rect.y -= 30 # TODO: it can be super easy for player
+                    self.holding_box.rect.y -= 30
 
                 self.holding_box.set_velocity(v_x * 20, v_y * 20)
                 self.holding_box.apply_gravity = False
@@ -472,7 +475,7 @@ class Player(pygame.sprite.Sprite):
                 self.holding_box.apply_gravity = True
 
             self.holding_box.apply_velocity = True
-            objectManager.get(ObjectManager.BOX_KEY).append(self.holding_box) # TODO: change strange line
+            objectManager.get(ObjectManager.BOX_KEY).append(self.holding_box)
             self.holding_box = None
 
         # hearts
@@ -522,7 +525,7 @@ class Player(pygame.sprite.Sprite):
             self.health += HEALTH_UP_POWER - self.max_health
             self.max_health = HEALTH_UP_POWER
 
-    def lose_health(self, objectManager):
+    def lose_health(self, objectManager: ObjectManager):
         if self.ability_lib[self.TURTLE] and self.velocity_x == 0 and self.velocity_y == 0:
             pass
         elif self.ability_lib[self.MISS] and random() <= MISS_CHANCE:
@@ -577,6 +580,7 @@ class Bullet(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     image = pygame.transform.scale(pygame.image.load("data/enemy.png"), (40, 40))
     image_frozen = pygame.transform.scale(pygame.image.load("data/enemy_frozen.png"), (40, 40))
+
     def __init__(self, group, x, y, shoot_cooldown=100):
         super().__init__(group)
         self.image = Enemy.image.copy()
@@ -587,7 +591,7 @@ class Enemy(pygame.sprite.Sprite):
         self.rect.centery = y
 
         self.health = 2
-        
+
         self.time_to_shoot = randint(shoot_cooldown // 2, shoot_cooldown)
         self.shoot_cooldown = shoot_cooldown
 
@@ -608,7 +612,7 @@ class Enemy(pygame.sprite.Sprite):
 
             if self.health <= 0:
                 objectManager.remove(self, ObjectManager.ENEMY_KEY)
-        
+
         # shoot
         if self.time_to_shoot <= 0:
             self.time_to_shoot = self.shoot_cooldown
@@ -620,7 +624,7 @@ class Enemy(pygame.sprite.Sprite):
                 self.image = Enemy.image.copy()
 
             self.time_to_shoot -= 1
-    
+
     def shoot(self, objectManager: ObjectManager):
         delta_x = objectManager.player().rect.centerx - self.rect.centerx
         delta_y = objectManager.player().rect.centery - self.rect.centery
@@ -632,7 +636,8 @@ class Enemy(pygame.sprite.Sprite):
         v_x = (delta_x * speed) // k
         v_y = (delta_y * speed) // k
 
-        objectManager.append(Bullet(objectManager.sprite_group, self.rect.centerx, self.rect.centery, v_x, v_y), ObjectManager.BULLET_KEY)
+        objectManager.append(Bullet(objectManager.sprite_group, self.rect.centerx, self.rect.centery, v_x, v_y),
+                             ObjectManager.BULLET_KEY)
 
 
 class SpawnManager:
@@ -724,9 +729,11 @@ class UI:
 
         for i in range(self.max_player_health):
             if i < self.player_health:
-                screen.blit(self.heart_full_img, (WIDTH // 2 + i * 60 - 30 * self.max_player_health, HEIGHT - 140, 45, 35))
+                screen.blit(self.heart_full_img,
+                            (WIDTH // 2 + i * 60 - 30 * self.max_player_health, HEIGHT - 140, 45, 35))
             else:
-                screen.blit(self.heart_empty_img, (WIDTH // 2 + i * 60 - 30 * self.max_player_health, HEIGHT - 140, 45, 35))
+                screen.blit(self.heart_empty_img,
+                            (WIDTH // 2 + i * 60 - 30 * self.max_player_health, HEIGHT - 140, 45, 35))
 
         for i, img in enumerate(self.cards):
             screen.blit(img, (WIDTH // 2 + 10 + i * 80 - 40 * len(self.cards), 500))
@@ -825,7 +832,8 @@ class ChoiceManager:
                             collide_id = -1
 
                             for i in range(count):
-                                if sprites[i].rect.collidepoint(x, y) or (sprites[i].rect.collidepoint(x, y - 40) and sprites[i].rect.y == 160): #####
+                                if sprites[i].rect.collidepoint(x, y) or (
+                                        sprites[i].rect.collidepoint(x, y - 40) and sprites[i].rect.y == 160):  #####
                                     collide_id = i
                                     break
 
@@ -896,7 +904,7 @@ def main():
             ui.set_cards(choiceManager.get_images())
             spawnManager.generate_new_level(objectManager, objectManager.player())
 
-        if not(objectManager.player().is_live()):
+        if not (objectManager.player().is_live()):
             RUN = False
 
         pygame.display.flip()
@@ -906,6 +914,7 @@ def main():
 if __name__ == "__main__":
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Throw the Box")
 
     while WINDOW_IS_OPEN:
         main()
